@@ -1,17 +1,17 @@
 import { RequestStatus } from 'src/common/enums';
 import { User } from 'src/users/entities/user.entity';
 import {Column, CreateDateColumn, Entity, ManyToOne, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn} from 'typeorm';
-import { GroupMember } from './group-member.entity';
+import { Friendship } from './friendship.entity';
 
-@Entity('GroupRequest')
-export class GroupRequest {
+@Entity('FriendshipRequest')
+export class FriendshipRequest {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @ManyToOne(() => GroupMember, groupMember => groupMember.sendedGroupRequests)
-    sender: GroupMember;
+    @ManyToOne(() => User, user => user.sendedFriendRequests)
+    sender: User;
 
-    @ManyToOne(() => User, user => user.receviedGroupRequests)
+    @ManyToOne(() => User, user => user.receviedFriendRequests)
     recevier: User;
 
     @Column({enum: RequestStatus, default: RequestStatus.Opened})
@@ -22,4 +22,7 @@ export class GroupRequest {
 
     @Column({nullable: true})
     finishedAt: Date;
+
+    @OneToOne(() => Friendship, friendship => friendship.friendRequest, {nullable: true})
+    friendship: Friendship;
 }

@@ -7,7 +7,8 @@ export enum UserRole {
 export enum GroupsUserRole {
     Member = "Member",
     Admin = "Admin",
-    Owner = "Owner"
+    Owner = "Owner",
+    Founder = "Founder"
 }
 
 export enum RequestStatus {
@@ -16,4 +17,13 @@ export enum RequestStatus {
     Accepted = "Accepted",
     Declined = "Declined",
     Closed = "Closed"
+}
+
+export enum OweStatus {
+    Opened = "Opened",
+    Canceled = "Canceled",
+    Accepted = "Accepted",
+    Declined = "Declined",
+    Returned = "Returned",
+    PartlyReturned = "PartlyReturned"
 }
