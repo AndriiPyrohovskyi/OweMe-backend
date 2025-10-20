@@ -5,7 +5,7 @@ import { TypeOrmModule, TypeOrmModuleOptions } from "@nestjs/typeorm";
 const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOptions => ({
     type: 'postgres',
     url: configService.get<string>('DB_CONNECTION_STRING'),
-    entities: [__dirname + '/../**/entities/*.entity.ts'],
+    entities: ['dist/**/*.entity{.ts,.js}'],
     synchronize: configService.get<string>('NODE_ENV') !== 'production',
     logging: configService.get<string>('NODE_ENV') === 'development',
     ssl: configService.get<string>('NODE_ENV') === 'production' ? {

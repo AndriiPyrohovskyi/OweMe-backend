@@ -11,4 +11,5 @@ export class UserChangeLog{
 
     @ManyToOne(() => User, user => user.changeLogsIn)
     actioned: User;
+    
 }
