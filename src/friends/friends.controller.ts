@@ -1,7 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { FriendsService } from './friends.service';
 
-@Controller()
+@Controller('friends')
 export class FriendsController {
   constructor(private readonly friendsService: FriendsService) {}
 
