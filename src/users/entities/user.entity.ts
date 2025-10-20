@@ -34,9 +34,6 @@ export class User {
     @CreateDateColumn()
     createdAt: Date;
 
-    @UpdateDateColumn()
-    updatedAt: Date;
-
     @OneToMany(() => UserChangeLog, userChangeLog => userChangeLog.actioned)
     changeLogsIn: UserChangeLog[];
 
