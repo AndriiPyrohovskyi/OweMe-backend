@@ -9,12 +9,13 @@ import { OweReturn } from './entities/owe-return.entity';
 import { MessageOweMention } from './entities/message-owe-mention.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([FullOwe]), 
-            TypeOrmModule.forFeature([OweItem]),
-            TypeOrmModule.forFeature([OweParticipant]),
-            TypeOrmModule.forFeature([OweReturn]),
-            TypeOrmModule.forFeature([MessageOweMention]),
-            ],
+  imports: [TypeOrmModule.forFeature([
+    FullOwe, 
+    OweItem, 
+    OweParticipant, 
+    OweReturn, 
+    MessageOweMention
+  ])],
   controllers: [OwesController],
   providers: [OwesService],
   exports: [OwesService]

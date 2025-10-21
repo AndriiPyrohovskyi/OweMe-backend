@@ -6,9 +6,7 @@ import { Friendship } from './entities/friendship.entity';
 import { FriendshipRequest } from './entities/friendship-request.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Friendship]), 
-            TypeOrmModule.forFeature([FriendshipRequest]),
-            ],
+  imports: [TypeOrmModule.forFeature([Friendship, FriendshipRequest])],
   controllers: [FriendsController],
   providers: [FriendsService],
   exports: [FriendsService]

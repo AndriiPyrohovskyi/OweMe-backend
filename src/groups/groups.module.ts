@@ -8,12 +8,7 @@ import { GroupMessage } from './entities/group-message.entity';
 import { GroupRolesLog } from './entities/group-log.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Group]), 
-            TypeOrmModule.forFeature([GroupMember]),
-            TypeOrmModule.forFeature([GroupMessage]),
-            TypeOrmModule.forFeature([GroupMember]),
-            TypeOrmModule.forFeature([GroupRolesLog]),
-            ],
+  imports: [TypeOrmModule.forFeature([Group, GroupMember, GroupMessage, GroupRolesLog])],
   controllers: [GroupsController],
   providers: [GroupsService],
   exports: [GroupsService]

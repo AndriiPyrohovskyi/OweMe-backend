@@ -17,13 +17,13 @@ export class User {
     @Column({ nullable: true })
     lastName: string;
 
-    @Column()
+    @Column({unique: true})
     username: string;
 
     @Column()
     passwordHash: string;
 
-    @Column()
+    @Column({unique: true})
     email: string;
 
     @Column({nullable: true})

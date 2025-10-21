@@ -6,9 +6,7 @@ import { User } from './entities/user.entity';
 import { UserChangeLog } from './entities/user-change-log.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User]), 
-            TypeOrmModule.forFeature([UserChangeLog])
-            ],
+  imports: [TypeOrmModule.forFeature([User, UserChangeLog])],
   controllers: [UsersController],
   providers: [UsersService],
   exports: [UsersService]
