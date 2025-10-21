@@ -1,9 +1,19 @@
 import { Module } from '@nestjs/common';
 import { GroupsService } from './groups.service';
 import { GroupsController } from './groups.controller';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Group } from './entities/group.entity';
+import { GroupMember } from './entities/group-member.entity';
+import { GroupMessage } from './entities/group-message.entity';
+import { GroupRolesLog } from './entities/group-log.entity';
 
 @Module({
-  imports: [],
+  imports: [TypeOrmModule.forFeature([Group]), 
+            TypeOrmModule.forFeature([GroupMember]),
+            TypeOrmModule.forFeature([GroupMessage]),
+            TypeOrmModule.forFeature([GroupMember]),
+            TypeOrmModule.forFeature([GroupRolesLog]),
+            ],
   controllers: [GroupsController],
   providers: [GroupsService],
   exports: [GroupsService]
