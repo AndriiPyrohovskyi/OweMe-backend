@@ -5,4 +5,5 @@ export class FriendsService {
   friendsHealthcheck(): object {
     return {message: "Friends Controller is running!"};
   }
+  
 }

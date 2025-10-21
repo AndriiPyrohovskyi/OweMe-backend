@@ -21,6 +21,9 @@ export class User {
     username: string;
 
     @Column()
+    passwordHash: string;
+
+    @Column()
     email: string;
 
     @Column({nullable: true})
@@ -35,7 +38,7 @@ export class User {
     createdAt: Date;
 
     @OneToMany(() => UserChangeLog, userChangeLog => userChangeLog.actioned)
-    changeLogsIn: UserChangeLog[];
+    changeLogsIn: UserChangeLog[]; //last element - your role
 
     @OneToMany(() => UserChangeLog, userChangeLog => userChangeLog.actioner)
     changeLogsOut: UserChangeLog[];

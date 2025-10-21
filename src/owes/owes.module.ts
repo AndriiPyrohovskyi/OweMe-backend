@@ -6,6 +6,7 @@ import { OwesController } from './owes.controller';
   imports: [],
   controllers: [OwesController],
   providers: [OwesService],
+  exports: [OwesService]
 })
 
 export class OwesModule {}
