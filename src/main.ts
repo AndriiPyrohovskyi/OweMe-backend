@@ -5,11 +5,7 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true, // Видаляє поля, які не описані в DTO
-    forbidNonWhitelisted: true, // Повертає помилку, якщо є зайві поля
-    transform: true, // Автоматично трансформує типи (наприклад, string -> number)
-  }));
+  app.useGlobalPipes(new ValidationPipe());
   
   const port = process.env.PORT ?? 3000; 
   await app.listen(port);

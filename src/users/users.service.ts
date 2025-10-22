@@ -6,6 +6,7 @@ import { Like, Repository } from 'typeorm'
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserChangeLog } from './entities/user-change-log.entity';
 import { UserRole } from 'src/common/enums';
+import { GetPublicUserDto } from './dto/get-public-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -19,12 +20,13 @@ export class UsersService {
 
   // ---------------------------------- Create Methods -------------------------------------
   async createUser(registerDto: RegisterDto): Promise<User> {
-    const user = await this.usersRepository.create(registerDto);
+    let { password ,...data} = registerDto;
+    const user = this.usersRepository.create({ ...data, passwordHash: password });
     return await this.usersRepository.save(user);
   }
 
   async giveNewRole(actionedUserId : number, actionerUserId : number, newRole: UserRole) : Promise<UserChangeLog> {
-    const currentUserRole = await this.getCurrentRole(actionedUserId);
+    const currentUserRole = await this.getUserCurrentRole(actionedUserId);
     if (currentUserRole === newRole) {
       throw new ConflictException(`User ID#${actionedUserId} already have ${currentUserRole} role!`)
     }
@@ -54,16 +56,18 @@ export class UsersService {
   // ---------------------------------- Update Methods -------------------------------------
 
   // ---------------------------------- Delete Methods -------------------------------------
-  async deleteUser(id: number): Promise<void> {
-    const user = await this.usersRepository.delete(id);
+  async deleteUser(id: number): Promise<GetPublicUserDto> {
+    const user = this.getUserById(id);
+    await this.usersRepository.delete(id);
     if (!user) {
       throw new NotFoundException(`User with ID "${id}" not found`);
     }
+    return user;
   }
   // ---------------------------------- Delete Methods -------------------------------------
 
   // ---------------------------------- Get Methods -------------------------------------
-  async getCurrentRole(userId: number): Promise<UserRole> {
+  async getUserCurrentRole(userId: number): Promise<UserRole> {
     const currentUser = await this.getUserById(userId);
     const currentUserRole = currentUser.changeLogsIn[currentUser.changeLogsIn.length - 1]?.newRole || UserRole.User;
     return currentUserRole;
@@ -112,7 +116,7 @@ export class UsersService {
     return user;
   }
 
-  async getAll(): Promise<User[]> {
+  async getAll(): Promise<GetPublicUserDto[]> {
     return await this.usersRepository.find();
   }
   // ---------------------------------- Get Methods -------------------------------------
