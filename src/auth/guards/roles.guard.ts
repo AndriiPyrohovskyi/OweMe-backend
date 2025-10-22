@@ -25,7 +25,11 @@ export class RolesGuard implements CanActivate {
       return false;
     }
     
-    const userRole = user.changeLogsIn[user.changeLogsIn.length - 1]?.newRole || UserRole.User;
+    let userRole = UserRole.User;
+    if (user.changeLogsIn && user.changeLogsIn.length > 0) {
+      userRole = user.changeLogsIn[user.changeLogsIn.length - 1]?.newRole || UserRole.User;
+    }
+    
     return requiredRoles.includes(userRole);
   }
 }

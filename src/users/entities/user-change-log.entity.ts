@@ -1,4 +1,4 @@
-import {Column, Entity, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
+import {Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn} from 'typeorm';
 import { User } from './user.entity';
 import { UserRole } from 'src/common/enums';
 
@@ -15,4 +15,7 @@ export class UserChangeLog{
 
     @ManyToOne(() => User, user => user.changeLogsIn)
     actioned: User;
+
+    @CreateDateColumn()
+    created_at: Date;
 }

@@ -26,20 +26,22 @@ export class UsersService {
     return await this.usersRepository.save(user);
   }
 
-  async giveNewRole(actionedUserId : number, actionerUserId : number, newRole: UserRole) : Promise<UserChangeLog> {
+  async giveNewRole(actionedUserId: number, actionerUserId: number, newRole: UserRole): Promise<UserChangeLog> {
     const currentUserRole = await this.getUserCurrentRole(actionedUserId);
     if (currentUserRole === newRole) {
-      throw new ConflictException(`User ID#${actionedUserId} already have ${currentUserRole} role!`)
+      throw new ConflictException(`User ID#${actionedUserId} already have ${currentUserRole} role!`);
     }
-    const actionedUser = this.getUserById(actionedUserId);
-    const actionerUser = this.getUserById(actionerUserId);
+
+    const actionedUser = await this.getUserById(actionedUserId);
+    const actionerUser = await this.getUserById(actionerUserId);
+
     const userRoleLog = this.usersLogRepository.create({
       newRole: newRole,
-      actioner: await actionerUser,
-      actioned: await actionedUser
+      actioner: actionerUser,
+      actioned: actionedUser
     });
-    
-    return await this.usersLogRepository.save(userRoleLog)
+
+    return await this.usersLogRepository.save(userRoleLog);
   }
   // ---------------------------------- Create Methods -------------------------------------
 
@@ -96,7 +98,10 @@ export class UsersService {
   }
 
   async getUserByUsername(username: string): Promise<User> {
-    const user = await this.usersRepository.findOne({where: {username }});
+    const user = await this.usersRepository.findOne({
+      where: { username },
+      relations: ['changeLogsIn', 'changeLogsOut']
+    });
     if (!user) {
       throw new NotFoundException(`User '${username}' not found`);
     }
@@ -112,7 +117,10 @@ export class UsersService {
   }
 
   async getUserById(id: number): Promise<User> {
-    const user = await this.usersRepository.findOne({where: { id }});
+    const user = await this.usersRepository.findOne({
+      where: { id },
+      relations: ['changeLogsIn', 'changeLogsOut']
+    });
     if (!user) {
       throw new NotFoundException(`User with id '${id}' not found`);
     }

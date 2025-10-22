@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
+import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
 import { AuthService } from './auth.service';
@@ -9,20 +9,20 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 
 @Module({
-  imports: [
-    UsersModule,
-    PassportModule,
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET') || 'fallback-secret',
-        signOptions: {
-          expiresIn: parseInt(configService.get<string>('JWT_EXPIRES_IN') || '7', 10) || '7d',
-        },
-      }),
-      inject: [ConfigService],
+imports: [
+  UsersModule,
+  PassportModule,
+  JwtModule.registerAsync({
+    imports: [ConfigModule],
+    useFactory: (configService: ConfigService) => ({
+      secret: configService.get<string>('JWT_SECRET') || 'fallback-secret',
+      signOptions: {
+        expiresIn: configService.get('JWT_EXPIRES_IN') || '7d',
+      },
     }),
-  ],
+    inject: [ConfigService],
+  }),
+],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, LocalStrategy],
   exports: [AuthService],

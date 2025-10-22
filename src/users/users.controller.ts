@@ -20,13 +20,15 @@ export class UsersController {
   }
 
   @Get('')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Admin)
   async getAll(): Promise<GetPublicUserDto[]> {
     return this.usersService.getAll();
   }
 
   @Get('userRole')
-  async getCurrentRole(@Body() username: string): Promise<UserRole> {
-    const user = await this.usersService.getUserByUsername(username);
+  async getCurrentRole(@Body() body: {username: string}): Promise<UserRole> {
+    const user = await this.usersService.getUserByUsername(body.username);
     return this.usersService.getUserCurrentRole(user.id);
   }
 
@@ -55,14 +57,11 @@ export class UsersController {
 
   // ---------------------------------- Post -------------------------------------
   @Post('userGiveNewRole')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.Admin)
-  async giveNewRole(@Body() actionedUsername: string, actionerUsername: string, newRole: UserRole) : Promise<object>{
-    const actionedUser = await this.usersService.getUserByUsername(actionedUsername);
-    const actionerUser = await this.usersService.getUserByUsername(actionerUsername);
-    this.usersService.giveNewRole(actionedUser.id, actionerUser.id, newRole);
-
-    return {message: `${actionedUsername}'s role succesfully changed to ${newRole} by ${actionerUsername}`}
+  async giveNewRole(@Body() body: {actionedUsername: string; actionerUsername: string; newRole: UserRole}) : Promise<object>{
+    const actionedUser = await this.usersService.getUserByUsername(body.actionedUsername);
+    const actionerUser = await this.usersService.getUserByUsername(body.actionerUsername);
+    this.usersService.giveNewRole(actionedUser.id, actionerUser.id, body.newRole);
+    return {message: `${body.actionedUsername}'s role succesfully changed to ${body.newRole} by ${body.actionerUsername}`}
   }
   // ---------------------------------- Post -------------------------------------
 
@@ -80,8 +79,8 @@ export class UsersController {
   
   // ---------------------------------- Delete -------------------------------------
   @Delete('user')
-  // @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
-  // @Roles(UserRole.Admin)
+  @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
+  @Roles(UserRole.Admin)
   async deleteUser(@Body() deleteUserDto: DeleteUserDto) : Promise<object> {
     const user = await this.usersService.deleteUser(deleteUserDto);
     return{message: `${user.username}'s entity was succesfully deleted!`}
