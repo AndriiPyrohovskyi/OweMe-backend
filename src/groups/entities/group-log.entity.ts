@@ -1,6 +1,6 @@
-import { User } from 'src/users/entities/user.entity';
-import {Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn} from 'typeorm'
+import { Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm'
 import { GroupMember } from './group-member.entity';
+import { Group } from './group.entity';
 
 @Entity('GroupRolesLog')
 export class GroupRolesLog {
@@ -12,4 +12,7 @@ export class GroupRolesLog {
 
     @ManyToOne(() => GroupMember, groupMember => groupMember.rolesOutLogs)
     actioned: GroupMember
+
+    @ManyToOne(() => Group, group => group.groupRolesLogs)
+    group: Group
 }

@@ -1,4 +1,3 @@
-import { User } from 'src/users/entities/user.entity';
 import {Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn} from 'typeorm'
 import { GroupMember } from './group-member.entity';
 import { GroupRolesLog } from './group-log.entity';
@@ -26,4 +25,7 @@ export class Group {
 
     @OneToMany(() => RequestToGroup, requestToGroup => requestToGroup.group, { cascade: ['insert', 'update'] })
     recievedRequestsToGroup: RequestToGroup[]
+
+    @OneToMany(() => GroupRolesLog, groupRolesLog => groupRolesLog.group, { cascade: ['insert', 'update'] })
+    groupRolesLogs: GroupRolesLog[]
 }
