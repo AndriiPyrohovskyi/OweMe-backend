@@ -4,7 +4,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
-import {Role} from 'src/common/decorators'
+import {Roles} from 'src/common/decorators'
 import { UserRole } from 'src/common/enums';
 @Controller('auth')
 export class AuthController {
@@ -32,7 +32,7 @@ export class AuthController {
   }
 
   @UseGuards(RolesGuard) // Застосовуємо RolesGuard
-  @Role(UserRole.Admin) // Додаємо роль, яка має доступ
+  @Roles(UserRole.Admin) // Додаємо роль, яка має доступ
   @Get('admin')
   async getAdminData(): Promise<string> {
     return 'This is admin data!';

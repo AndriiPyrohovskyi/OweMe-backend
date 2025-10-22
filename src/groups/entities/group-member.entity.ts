@@ -4,7 +4,7 @@ import { Group } from './group.entity';
 import { GroupsUserRole } from 'src/common/enums';
 import { GroupRolesLog } from './group-log.entity';
 import { MessageMention } from './message-mention.entity';
-import { GroupRequest } from './group-request.entity';
+import { RequestFromGroup } from './request-from-group.entity';
 
 @Entity('GroupMember')
 export class GroupMember {
@@ -23,15 +23,15 @@ export class GroupMember {
     @CreateDateColumn()
     joinedAt: Date
 
-    @OneToMany(() => GroupRolesLog, groupRolesLog => groupRolesLog.actioner)
+    @OneToMany(() => GroupRolesLog, groupRolesLog => groupRolesLog.actioner, { cascade: ['insert', 'update'] })
     rolesInLogs: GroupMember[];
 
-    @OneToMany(() => GroupRolesLog, groupRolesLog => groupRolesLog.actioned)
+    @OneToMany(() => GroupRolesLog, groupRolesLog => groupRolesLog.actioned, { cascade: ['insert', 'update'] })
     rolesOutLogs: GroupMember[];
 
-    @OneToMany(() => MessageMention, messageMention => messageMention.message)
+    @OneToMany(() => MessageMention, messageMention => messageMention.message, { cascade: ['insert', 'update'] })
     mentions: MessageMention[]
 
-    @OneToMany(() => MessageMention, messageMention => messageMention.message)
-    sendedGroupRequests: GroupRequest[]
+    @OneToMany(() => RequestFromGroup, groupRequest => groupRequest.sender, { cascade: ['insert', 'update'] })
+    sendedRequestsFromGroup: RequestFromGroup[]
 }

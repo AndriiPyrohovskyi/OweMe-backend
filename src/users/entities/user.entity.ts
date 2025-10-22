@@ -2,7 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany, Up
 import { UserChangeLog } from './user-change-log.entity';
 import { FriendshipRequest } from 'src/friends/entities/friendship-request.entity';
 import { GroupMember } from 'src/groups/entities/group-member.entity';
-import { GroupRequest } from 'src/groups/entities/group-request.entity';
+import { RequestFromGroup } from 'src/groups/entities/request-from-group.entity';
 import { FullOwe } from 'src/owes/entities/full-owe.entity';
 import { OweParticipant } from 'src/owes/entities/owe-partipicipant.entity';
 
@@ -37,27 +37,27 @@ export class User {
     @CreateDateColumn()
     createdAt: Date;
 
-    @OneToMany(() => UserChangeLog, userChangeLog => userChangeLog.actioned)
+    @OneToMany(() => UserChangeLog, userChangeLog => userChangeLog.actioned, { cascade: ['insert', 'update'] })
     changeLogsIn: UserChangeLog[]; //last element - your role
 
-    @OneToMany(() => UserChangeLog, userChangeLog => userChangeLog.actioner)
+    @OneToMany(() => UserChangeLog, userChangeLog => userChangeLog.actioner, { cascade: ['insert', 'update'] })
     changeLogsOut: UserChangeLog[];
 
-    @OneToMany(() => FriendshipRequest, friendshipRequest => friendshipRequest.sender)
+    @OneToMany(() => FriendshipRequest, friendshipRequest => friendshipRequest.sender, { cascade: ['insert', 'update'] })
     sendedFriendRequests: FriendshipRequest[];
 
-    @OneToMany(() => FriendshipRequest, friendshipRequest => friendshipRequest.recevier)
+    @OneToMany(() => FriendshipRequest, friendshipRequest => friendshipRequest.recevier, { cascade: ['insert', 'update'] })
     receviedFriendRequests: FriendshipRequest[];
 
-    @OneToMany(() => GroupMember, groupMember => groupMember.user)
+    @OneToMany(() => GroupMember, groupMember => groupMember.user, { cascade: ['insert', 'update'] })
     groups: GroupMember[];
 
-    @OneToMany(() => GroupRequest, groupRequest => groupRequest.recevier)
-    receviedGroupRequests: GroupRequest[];
+    @OneToMany(() => RequestFromGroup, groupRequest => groupRequest.recevier, { cascade: ['insert', 'update'] })
+    receviedGroupRequests: RequestFromGroup[];
 
-    @OneToMany(() => FullOwe, fullOwe => fullOwe.fromUser)
+    @OneToMany(() => FullOwe, fullOwe => fullOwe.fromUser, { cascade: ['insert', 'update'] })
     owesOut: FullOwe[]
 
-    @OneToMany(() => OweParticipant, oweParticipant => oweParticipant.toUser)
+    @OneToMany(() => OweParticipant, oweParticipant => oweParticipant.toUser, { cascade: ['insert', 'update'] })
     owesIn: OweParticipant[]
 }

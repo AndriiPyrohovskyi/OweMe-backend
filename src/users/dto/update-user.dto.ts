@@ -1,24 +1,31 @@
-import { IsString } from "class-validator";
+import { IsOptional, IsString } from 'class-validator';
 
-export class UpdateUserDto{
-    @IsString()
-    firstName: string;
+export class UpdateUserDto {
+  @IsOptional()
+  @IsString()
+  firstName?: string;
 
-    @IsString()
-    lastName: string;
+  @IsOptional()
+  @IsString()
+  lastName?: string;
 
-    @IsString()
-    username: string;
+  @IsOptional()
+  @IsString()
+  username?: string;
 
-    @IsString()
-    passwordHash: string;
+  @IsOptional()
+  @IsString()
+  passwordHash?: string;
 
-    @IsString()
-    email: string;
+  @IsOptional()
+  @IsString()
+  email?: string;
 
-    @IsString()
-    avatarUrl: string;
-    
-    @IsString()
-    description: string;
+  @IsOptional()
+  @IsString()
+  avatarUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
 }

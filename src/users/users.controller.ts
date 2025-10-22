@@ -1,13 +1,14 @@
-import { Body, Controller, Delete, Get, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
-import { Role } from 'src/common/decorators';
+import { Roles } from 'src/common/decorators';
 import { UserRole } from 'src/common/enums';
 import { UserChangeLog } from './entities/user-change-log.entity';
 import { GetPublicUserDto } from './dto/get-public-user.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { OwnerOrAdminGuard } from 'src/auth/guards/owner-or-admin.guard';
+import { DeleteUserDto } from './dto/delete-user.dto';
 
 @Controller('users')
 export class UsersController {
@@ -55,7 +56,7 @@ export class UsersController {
   // ---------------------------------- Post -------------------------------------
   @Post('userGiveNewRole')
   @UseGuards(RolesGuard)
-  @Role(UserRole.Admin)
+  @Roles(UserRole.Admin)
   async giveNewRole(@Body() actionedUsername: string, actionerUsername: string, newRole: UserRole) : Promise<object>{
     const actionedUser = await this.usersService.getUserByUsername(actionedUsername);
     const actionerUser = await this.usersService.getUserByUsername(actionerUsername);
@@ -66,21 +67,23 @@ export class UsersController {
   // ---------------------------------- Post -------------------------------------
 
   // ---------------------------------- Put -------------------------------------
-  @Put('user')
+  @Put('user/:id')
   @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
-  @Role(UserRole.Admin)
-  async updateUser(@Body() id: number, updateUserDto: UpdateUserDto) : Promise<object> {
-    const user = await this.usersService.updateUser(id, updateUserDto);
-    return{message: `${user.username}'s entity was succesfully updated!`}
+  async updateUser(
+    @Param('id') id: string,
+    @Body() updateUserDto: UpdateUserDto,
+  ): Promise<object> {
+    const user = await this.usersService.updateUser(parseInt(id, 10), updateUserDto);
+    return { message: `${user.username}'s entity was successfully updated!` };
   }
   // ---------------------------------- Put -------------------------------------
   
   // ---------------------------------- Delete -------------------------------------
   @Delete('user')
-  @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
-  @Role(UserRole.Admin)
-  async deleteUser(@Body() id: number) : Promise<object> {
-    const user = await this.usersService.deleteUser(id);
+  // @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
+  // @Roles(UserRole.Admin)
+  async deleteUser(@Body() deleteUserDto: DeleteUserDto) : Promise<object> {
+    const user = await this.usersService.deleteUser(deleteUserDto);
     return{message: `${user.username}'s entity was succesfully deleted!`}
   }
   // ---------------------------------- Delete -------------------------------------

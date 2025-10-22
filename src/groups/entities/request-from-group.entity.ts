@@ -3,12 +3,12 @@ import { User } from 'src/users/entities/user.entity';
 import {Column, CreateDateColumn, Entity, ManyToOne, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn} from 'typeorm';
 import { GroupMember } from './group-member.entity';
 
-@Entity('GroupRequest')
-export class GroupRequest {
+@Entity('RequestFromGroup')
+export class RequestFromGroup {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @ManyToOne(() => GroupMember, groupMember => groupMember.sendedGroupRequests)
+    @ManyToOne(() => GroupMember, groupMember => groupMember.sendedRequestsFromGroup)
     sender: GroupMember;
 
     @ManyToOne(() => User, user => user.receviedGroupRequests)

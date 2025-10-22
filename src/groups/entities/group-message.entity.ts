@@ -16,6 +16,6 @@ export class GroupMessage {
     @CreateDateColumn()
     createdAt: Date;
 
-    @OneToMany(() => MessageMention, messageMention => messageMention.message)
+    @OneToMany(() => MessageMention, messageMention => messageMention.message, { cascade: ['insert', 'update'] })
     mentions: MessageMention[]
 }

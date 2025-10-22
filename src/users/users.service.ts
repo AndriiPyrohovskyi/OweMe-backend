@@ -7,6 +7,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UserChangeLog } from './entities/user-change-log.entity';
 import { UserRole } from 'src/common/enums';
 import { GetPublicUserDto } from './dto/get-public-user.dto';
+import { DeleteUserDto } from './dto/delete-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -46,21 +47,23 @@ export class UsersService {
   async updateUser(id: number, updateUserDto: UpdateUserDto): Promise<User> {
     const user = await this.usersRepository.preload({
       id,
-      ...updateUserDto
+      ...updateUserDto,
     });
+  
     if (!user) {
-      throw new NotFoundException(`User with ID "${id}" not found`);
+      throw new NotFoundException(`User with id "${id}" not found`);
     }
+  
     return await this.usersRepository.save(user);
   }
   // ---------------------------------- Update Methods -------------------------------------
 
   // ---------------------------------- Delete Methods -------------------------------------
-  async deleteUser(id: number): Promise<GetPublicUserDto> {
-    const user = this.getUserById(id);
-    await this.usersRepository.delete(id);
+  async deleteUser(deleteUserDto: DeleteUserDto): Promise<GetPublicUserDto> {
+    const user = this.getUserById(deleteUserDto.id);
+    await this.usersRepository.delete(deleteUserDto.id);
     if (!user) {
-      throw new NotFoundException(`User with ID "${id}" not found`);
+      throw new NotFoundException(`User with username "${deleteUserDto.id}" not found`);
     }
     return user;
   }
