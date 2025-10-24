@@ -86,7 +86,43 @@ export class UsersService {
     return userInLogs;
   }
 
-  async getUsersByUsernamePart(username: string): Promise<User[]> {
+  async getPublicUsersByUsernamePart(username: string): Promise<GetPublicUserDto[]> {
+    const users = await this.usersRepository.find({
+      where: {username: Like(`%${username}%`)}
+    });
+    if (!users) {
+      throw new NotFoundException(`Users with '${username}' not found`);
+    }
+    return users.map(user => ({
+      id: user.id,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      avatarUrl: user.avatarUrl,
+      description: user.description,
+    }));
+  }
+
+  async getPublicUserByUsername(username: string): Promise<GetPublicUserDto> {
+    const user = await this.usersRepository.findOne({
+      where: { username },
+      relations: ['changeLogsIn', 'changeLogsOut']
+    });
+    if (!user) {
+      throw new NotFoundException(`User '${username}' not found`);
+    }
+    return {
+      id: user.id,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      avatarUrl: user.avatarUrl,
+      description: user.description,
+    };
+  }
+
+  async getFullUsersByUsernamePart(username: string): Promise<User[]> {
     const users = await this.usersRepository.find({
       where: {username: Like(`%${username}%`)}
     });
@@ -96,7 +132,7 @@ export class UsersService {
     return users;
   }
 
-  async getUserByUsername(username: string): Promise<User> {
+  async getFullUserByUsername(username: string): Promise<User> {
     const user = await this.usersRepository.findOne({
       where: { username },
       relations: ['changeLogsIn', 'changeLogsOut']
@@ -106,6 +142,7 @@ export class UsersService {
     }
     return user;
   }
+
 
   async getUserByEmail(email: string): Promise<User> {
     const user = await this.usersRepository.findOne({where: { email }});

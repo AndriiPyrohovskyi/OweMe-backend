@@ -1,4 +1,4 @@
-import { Injectable, NotAcceptableException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotAcceptableException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { Friendship } from './entities/friendship.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import {Repository} from 'typeorm'
@@ -19,18 +19,87 @@ export class FriendsService {
     return {message: "Friends Controller is running!"};
   }
   // ---------------------------------- Create Methods -------------------------------------
-  async sendFriendRequest(senderId: number, recevierId: number): Promise<FriendshipRequest> {
+  async sendFriendRequest(senderId: number, recevierId: number): Promise<object> {
+    if (!recevierId || !senderId) {
+      throw new BadRequestException('Not given right variables!');
+    }
+    if (senderId === recevierId) {
+      throw new BadRequestException('You cannot send a friend request to yourself');
+    }
+    const sender = await this.friendshipRequestRepository.manager.findOne(User, { where: { id: senderId } });
+    if (!sender) {
+      throw new NotFoundException(`Sender with id ${senderId} not found`);
+    }
+    const recevier = await this.friendshipRequestRepository.manager.findOne(User, { where: { id: recevierId } });
+    if (!recevier) {
+      throw new NotFoundException(`Recevier with id ${recevierId} not found`);
+    }
+    const existingFriendship = await this.friendshipRepository
+      .createQueryBuilder('friendship')
+      .leftJoinAndSelect('friendship.friendRequest', 'friendRequest')
+      .where(
+        '(friendRequest.senderId = :senderId AND friendRequest.recevierId = :recevierId) OR ' +
+        '(friendRequest.senderId = :recevierId AND friendRequest.recevierId = :senderId)',
+        { senderId, recevierId }
+      )
+      .getOne();
+
+    if (existingFriendship) {
+      throw new NotAcceptableException('Users are already friends');
+    }
+    const activeRequest = await this.friendshipRequestRepository.findOne({
+      where: [
+        { sender: { id: senderId }, recevier: { id: recevierId }, requestStatus: RequestStatus.Opened },
+        { sender: { id: recevierId }, recevier: { id: senderId }, requestStatus: RequestStatus.Opened },
+      ],
+    });
+
+    if (activeRequest) {
+      throw new NotAcceptableException('Friend request already exists and is pending');
+    }
+
     const friendRequest = this.friendshipRequestRepository.create({
       sender: { id: senderId },
       recevier: { id: recevierId },
       requestStatus: RequestStatus.Opened,
     });
 
-    return await this.friendshipRequestRepository.save(friendRequest);
+    await this.friendshipRequestRepository.save(friendRequest);
+  
+    return {message: `Friend request sent to ${recevier.username} from ${sender.username} succesfully.`};
   }
+
+  // ---------------------------------- History Methods -------------------------------------
+  async getFriendRequestHistory(userId1: number, userId2: number): Promise<FriendshipRequest[]> {
+    return await this.friendshipRequestRepository.find({
+      where: [
+        { sender: { id: userId1 }, recevier: { id: userId2 } },
+        { sender: { id: userId2 }, recevier: { id: userId1 } },
+      ],
+      relations: ['sender', 'recevier'],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async getAllUserRequestHistory(userId: number): Promise<{sent: FriendshipRequest[], received: FriendshipRequest[]}> {
+    const sent = await this.friendshipRequestRepository.find({
+      where: { sender: { id: userId } },
+      relations: ['sender', 'recevier'],
+      order: { createdAt: 'DESC' },
+    });
+
+    const received = await this.friendshipRequestRepository.find({
+      where: { recevier: { id: userId } },
+      relations: ['sender', 'recevier'],
+      order: { createdAt: 'DESC' },
+    });
+
+    return { sent, received };
+  }
+
   // ---------------------------------- Create Methods -------------------------------------
   // ---------------------------------- Update Methods -------------------------------------
-  async acceptFriendRequest(requestId: number): Promise<Friendship> {
+  async acceptFriendRequest(requestId: number, userId?: number): Promise<object> {
     const friendRequest = await this.friendshipRequestRepository.findOne({
       where: { id: requestId },
       relations: ['sender', 'recevier'],
@@ -38,6 +107,11 @@ export class FriendsService {
 
     if (!friendRequest) {
       throw new NotFoundException('Friendship request not found');
+    }
+
+    // Перевіряємо права користувача (якщо переданий userId)
+    if (userId && friendRequest.recevier.id !== userId) {
+      throw new ForbiddenException('You can only accept friend requests sent to you');
     }
 
     friendRequest.requestStatus = RequestStatus.Accepted;
@@ -48,7 +122,9 @@ export class FriendsService {
       friendRequest,
     });
 
-    return await this.friendshipRepository.save(friendship);
+    await this.friendshipRepository.save(friendship);
+
+    return {message: `Friend request from ${friendship.friendRequest.sender.username} was accepted by ${friendship.friendRequest.recevier.username} succesfully.`};
   }
 
   async acceptAllFriendRequestsByUser(userId: number): Promise<Friendship[]> {
@@ -109,12 +185,6 @@ export class FriendsService {
       friendRequest.requestStatus = RequestStatus.Declined;
       friendRequest.finishedAt = new Date();
       await this.friendshipRequestRepository.save(friendRequest);
-
-      const friendship = this.friendshipRepository.create({
-        friendRequest,
-      });
-
-      friendships.push(await this.friendshipRepository.save(friendship));
     }
 
     return friendships;
@@ -184,16 +254,35 @@ export class FriendsService {
   }
   // ---------------------------------- Delete Methods -------------------------------------
   // ---------------------------------- Get Methods ----------------------------------------
+  async getFriendshipRequestById(id: number): Promise<FriendshipRequest> {
+    const friendshipRequest = await this.friendshipRequestRepository.findOne({
+      where: { id },
+      relations: ['sender', 'recevier'],
+    });
+
+    if (!friendshipRequest) {
+      throw new NotFoundException(`Friendship request with ID ${id} not found`);
+    }
+
+    return friendshipRequest;
+  }
+  
   async getAllFriendships(): Promise<object[]> {
-    return await this.friendshipRepository.find({
+    const friendships = await this.friendshipRepository.find({
       relations: [
         'friendRequest',
         'friendRequest.sender',
         'friendRequest.recevier',
-        'friendRequest.createdAt',
-        'friendRequest.finishedAt',
       ],
     });
+
+    return friendships.map(friendship => ({
+      id: friendship.id,
+      sender: friendship.friendRequest.sender,
+      recevier: friendship.friendRequest.recevier,
+      createdAt: friendship.friendRequest.createdAt,
+      finishedAt: friendship.friendRequest.finishedAt,
+    }));
   }
 
   async getAllUserFriends(id: number): Promise<User[]> {
@@ -223,28 +312,81 @@ export class FriendsService {
     const commonFriends = friends1.filter(friend1 =>
       friends2.some(friend2 => friend1.id === friend2.id)
     );
-  
+
     return commonFriends;
   }
 
-  async getAllFriendshipRequests(): Promise<FriendshipRequest[]> {
-    return await this.friendshipRequestRepository.find();
+  async getAllFriendshipRequests(): Promise<object[]> {
+    const friendshipRequests = await this.friendshipRequestRepository.find({relations: ['sender', 'recevier'],});
+    return friendshipRequests.map(request => ({
+      id: request.id,
+      requestStatus: request.requestStatus,
+      createdAt: request.createdAt,
+      finishedAt: request.finishedAt,
+      sender: {
+        id: request.sender.id,
+        username: request.sender.username,
+        firstName: request.sender.firstName,
+        lastName: request.sender.lastName,
+      },
+      recevier: {
+        id: request.recevier.id,
+        username: request.recevier.username,
+        firstName: request.recevier.firstName,
+        lastName: request.recevier.lastName,
+      },
+    }));
   }
 
-  async getAllFriendshipRequestsByUser(id: number): Promise<FriendshipRequest[]> {
-    return await this.friendshipRequestRepository.find({ where: [
-      { sender: { id } },
-      { recevier: { id } },
-    ],
+  async getAllFriendshipRequestsByUser(id: number): Promise<object> {
+    const [sended, received] = await Promise.all([
+      this.getAllFriendshipRequestsSendedByUser(id),
+      this.getAllFriendshipRequestsReceivedByUser(id),
+    ]);
+    return {
+      sended,
+      received,
+    };
+  }
+
+  async getAllFriendshipRequestsSendedByUser(id: number): Promise<object[]> {
+    const friendshipRequestsByUser = await this.friendshipRequestRepository.find({ 
+      where: {sender: { id }},     
+      relations: ['sender', 'recevier'],
     });
+
+    return friendshipRequestsByUser.map(request => ({
+      id: request.id,
+      requestStatus: request.requestStatus,
+      createdAt: request.createdAt,
+      finishedAt: request.finishedAt,
+      user: {
+        id: request.recevier.id,
+        username: request.recevier.username,
+        firstName: request.recevier.firstName,
+        lastName: request.recevier.lastName,
+      },
+    }));
   }
 
-  async getAllFriendshipRequestsSendedByUser(id: number): Promise<FriendshipRequest[]> {
-    return await this.friendshipRequestRepository.find({ where: {sender: { id }}});
-  }
+  async getAllFriendshipRequestsReceivedByUser(id: number): Promise<object[]> {
+    const friendshipRequestsByUser = await this.friendshipRequestRepository.find({ 
+      where: {recevier: { id }},
+      relations: ['sender', 'recevier'],
+    });
 
-  async getAllFriendshipRequestsReceivedByUser(id: number): Promise<FriendshipRequest[]> {
-    return await this.friendshipRequestRepository.find({ where: {recevier: { id }}});
+    return friendshipRequestsByUser.map(request => ({
+      id: request.id,
+      requestStatus: request.requestStatus,
+      createdAt: request.createdAt,
+      finishedAt: request.finishedAt,
+      user: {
+        id: request.sender.id,
+        username: request.sender.username,
+        firstName: request.sender.firstName,
+        lastName: request.sender.lastName,
+      },
+    }));
   }
 
   async checkIfUsersAreFriends(id1: number, id2: number): Promise<boolean> {

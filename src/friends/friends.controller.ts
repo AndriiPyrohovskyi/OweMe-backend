@@ -3,7 +3,7 @@ import { FriendsService } from './friends.service';
 import { Friendship } from './entities/friendship.entity';
 import { FriendshipRequest } from './entities/friendship-request.entity';
 import { User } from 'src/users/entities/user.entity';
-import { Roles } from 'src/common/decorators';
+import { Roles, CurrentUser, TargetUserField, FriendRequestRole } from 'src/common/decorators';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { UserRole } from 'src/common/enums';
@@ -26,52 +26,59 @@ export class FriendsController {
     return this.friendsService.getAllFriendships();
   }
 
-  @Get('user/:id')
+  @Get('user/:targetUserId')
   @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
-  async getAllUserFriends(@Param('id') id: number): Promise<User[]> {
-    return this.friendsService.getAllUserFriends(id);
+  @TargetUserField('targetUserId')
+  async getAllUserFriends(@Param('targetUserId') targetUserId: number): Promise<User[]> {
+    return this.friendsService.getAllUserFriends(targetUserId);
   }
 
   @Get('common')
   @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
+  @TargetUserField('targetUserId')
   async getAllCommonUsersFriends(
-    @Query('id1') id1: number,
-    @Query('id2') id2: number,
+    @Query('targetUserId') targetUserId: number,
+    @Query('targetedUserId') targetedUserId: number,
   ): Promise<User[]> {
-    return this.friendsService.getAllCommonUsersFriends(id1, id2);
+    return this.friendsService.getAllCommonUsersFriends(targetUserId, targetedUserId);
   }
 
   @Get('requests')
-  @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
-  async getAllFriendshipRequests(): Promise<FriendshipRequest[]> {
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Admin)
+  async getAllFriendshipRequests(): Promise<object[]> {
     return this.friendsService.getAllFriendshipRequests();
   }
 
-  @Get('requests/user/:id')
+  @Get('requests/user/:targetUserId')
   @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
-  async getAllFriendshipRequestsByUser(@Param('id') id: number): Promise<FriendshipRequest[]> {
-    return this.friendsService.getAllFriendshipRequestsByUser(id);
+  @TargetUserField('targetUserId')
+  async getAllFriendshipRequestsByUser(@Param('targetUserId') targetUserId: number): Promise<object> {
+    return this.friendsService.getAllFriendshipRequestsByUser(targetUserId);
   }
 
-  @Get('requests/sent/:id')
+  @Get('requests/sent/:targetUserId')
   @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
-  async getAllFriendshipRequestsSendedByUser(@Param('id') id: number): Promise<FriendshipRequest[]> {
-    return this.friendsService.getAllFriendshipRequestsSendedByUser(id);
+  @TargetUserField('targetUserId')
+  async getAllFriendshipRequestsSendedByUser(@Param('targetUserId') targetUserId: number): Promise<object[]> {
+    return this.friendsService.getAllFriendshipRequestsSendedByUser(targetUserId);
   }
 
-  @Get('requests/received/:id')
+  @Get('requests/received/:targetUserId')
   @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
-  async getAllFriendshipRequestsReceivedByUser(@Param('id') id: number): Promise<FriendshipRequest[]> {
-    return this.friendsService.getAllFriendshipRequestsReceivedByUser(id);
+  @TargetUserField('targetUserId')
+  async getAllFriendshipRequestsReceivedByUser(@Param('targetUserId') targetUserId: number): Promise<object[]> {
+    return this.friendsService.getAllFriendshipRequestsReceivedByUser(targetUserId);
   }
 
   @Get('check-friends')
   @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
+  @TargetUserField('targetUserId')
   async checkIfUsersAreFriends(
-    @Query('id1') id1: number,
-    @Query('id2') id2: number,
+    @Query('targetUserId') targetUserId: number,
+    @Query('targetedUserId') targetedUserId: number,
   ): Promise<boolean> {
-    return this.friendsService.checkIfUsersAreFriends(id1, id2);
+    return this.friendsService.checkIfUsersAreFriends(targetUserId, targetedUserId);
   }
 
   @Get('friend-count/:id')
@@ -81,33 +88,40 @@ export class FriendsController {
 
   @Get('check-request')
   @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
+  @TargetUserField('targetUserId')
   async checkIfFriendRequestExists(
-    @Query('id1') id1: number,
-    @Query('id2') id2: number,
+    @Query('targetUserId') targetUserId: number,
+    @Query('targetedUserId') targetedUserId: number,
   ): Promise<boolean> {
-    return this.friendsService.checkIfFriendRequestExists(id1, id2);
+    return this.friendsService.checkIfFriendRequestExists(targetUserId, targetedUserId);
   }
 
   // ---------------------------------- Post ------------------------------------
   @Post('send-request')
-  @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
+  @UseGuards(JwtAuthGuard)
   async sendFriendRequest(
-    @Body() body: { senderId: number; recevierId: number },
-  ): Promise<FriendshipRequest> {
-    return this.friendsService.sendFriendRequest(body.senderId, body.recevierId);
+    @CurrentUser() currentUser: User,
+    @Body() body: { recevierId: number },
+  ): Promise<object> {
+    return this.friendsService.sendFriendRequest(currentUser.id, body.recevierId);
   }
 
   // ---------------------------------- Put -------------------------------------
   @Put('accept-request/:id')
   @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
-  async acceptFriendRequest(@Param('id') id: number): Promise<Friendship> {
-    return this.friendsService.acceptFriendRequest(id);
+  @FriendRequestRole('receiver')
+  async acceptFriendRequest(
+    @Param('id') id: number,
+    @CurrentUser() currentUser: User
+  ): Promise<object> {
+    return this.friendsService.acceptFriendRequest(id, currentUser.id);
   }
 
-  @Put('accept-all/:id')
+  @Put('accept-all/:targetUserId')
   @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
-  async acceptAllFriendRequestsByUser(@Param('id') id: number): Promise<Friendship[]> {
-    return this.friendsService.acceptAllFriendRequestsByUser(id);
+  @TargetUserField('targetUserId')
+  async acceptAllFriendRequestsByUser(@Param('targetUserId') targetUserId: number): Promise<Friendship[]> {
+    return this.friendsService.acceptAllFriendRequestsByUser(targetUserId);
   }
 
   @Put('decline-request/:id')
@@ -116,10 +130,11 @@ export class FriendsController {
     return this.friendsService.declineFriendRequest(id);
   }
 
-  @Put('decline-all/:id')
+  @Put('decline-all/:targetUserId')
   @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
-  async declineAllFriendRequestsByUser(@Param('id') id: number): Promise<Friendship[]> {
-    return this.friendsService.declineAllFriendRequestsByUser(id);
+  @TargetUserField('targetUserId')
+  async declineAllFriendRequestsByUser(@Param('targetUserId') targetUserId: number): Promise<Friendship[]> {
+    return this.friendsService.declineAllFriendRequestsByUser(targetUserId);
   }
 
   @Put('cancel-request/:id')
@@ -128,20 +143,22 @@ export class FriendsController {
     return this.friendsService.cancelFriendRequest(id);
   }
 
-  @Put('cancel-all/:id')
+  @Put('cancel-all/:targetUserId')
   @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
-  async cancelAllFriendRequestsByUser(@Param('id') id: number): Promise<Friendship[]> {
-    return this.friendsService.cancelAllFriendRequestsByUser(id);
+  @TargetUserField('targetUserId')
+  async cancelAllFriendRequestsByUser(@Param('targetUserId') targetUserId: number): Promise<Friendship[]> {
+    return this.friendsService.cancelAllFriendRequestsByUser(targetUserId);
   }
 
   // ---------------------------------- Delete ----------------------------------
-  
+
   @Delete('remove-friend')
   @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
+  @TargetUserField('targetUserId')
   async removeFriend(
-    @Query('id1') id1: number,
-    @Query('id2') id2: number,
+    @Query('targetUserId') targetUserId: number,
+    @Query('targetedUserId') targetedUserId: number,
   ): Promise<void> {
-    return this.friendsService.removeFriend(id1, id2);
+    return this.friendsService.removeFriend(targetUserId, targetedUserId);
   }
 }

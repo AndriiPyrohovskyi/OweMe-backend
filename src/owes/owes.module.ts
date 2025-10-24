@@ -7,15 +7,18 @@ import { OweItem } from './entities/owe-item.entity';
 import { OweParticipant } from './entities/owe-partipicipant.entity';
 import { OweReturn } from './entities/owe-return.entity';
 import { MessageOweMention } from './entities/message-owe-mention.entity';
+import { UsersModule } from 'src/users/users.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([
+  imports: [
+    TypeOrmModule.forFeature([
     FullOwe, 
     OweItem, 
     OweParticipant, 
     OweReturn, 
     MessageOweMention
-  ])],
+  ]), UsersModule
+],
   controllers: [OwesController],
   providers: [OwesService],
   exports: [OwesService]

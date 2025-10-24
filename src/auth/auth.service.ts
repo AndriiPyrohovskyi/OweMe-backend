@@ -18,7 +18,7 @@ export class AuthService {
     }
 
   async validateUser(username: string, password: string): Promise<any> {
-    const user = await this.usersService.getUserByUsername(username);
+    const user = await this.usersService.getFullUserByUsername(username);
     if (!user) {
       throw new UnauthorizedException('Invalid username'); // Кидаємо помилку, якщо користувач не знайдений
     }
