@@ -217,15 +217,15 @@ export class FriendsService {
     return Array.from(new Map(friends.map(friend => [friend.id, friend])).values());
   }
 
-async getAllCommonUsersFriends(id1: number, id2: number): Promise<User[]> {
-  const friends1 = await this.getAllUserFriends(id1);
-  const friends2 = await this.getAllUserFriends(id2);
-  const commonFriends = friends1.filter(friend1 =>
-    friends2.some(friend2 => friend1.id === friend2.id)
-  );
-
-  return commonFriends;
-}
+  async getAllCommonUsersFriends(id1: number, id2: number): Promise<User[]> {
+    const friends1 = await this.getAllUserFriends(id1);
+    const friends2 = await this.getAllUserFriends(id2);
+    const commonFriends = friends1.filter(friend1 =>
+      friends2.some(friend2 => friend1.id === friend2.id)
+    );
+  
+    return commonFriends;
+  }
 
   async getAllFriendshipRequests(): Promise<FriendshipRequest[]> {
     return await this.friendshipRequestRepository.find();
