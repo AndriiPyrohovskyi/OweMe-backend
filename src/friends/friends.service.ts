@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import {Repository} from 'typeorm'
 import { FriendshipRequest } from './entities/friendship-request.entity';
 import { RequestStatus } from 'src/common/enums';
+import { User } from 'src/users/entities/user.entity';
 
 @Injectable()
 export class FriendsService {
@@ -195,21 +196,36 @@ export class FriendsService {
     });
   }
 
-  async getAllUserFriends(id: number): Promise<object[]> {
-    return await this.friendshipRepository.find({
+  async getAllUserFriends(id: number): Promise<User[]> {
+    const friendships = await this.friendshipRepository.find({
       relations: [
         'friendRequest',
         'friendRequest.sender',
         'friendRequest.recevier',
-        'friendRequest.createdAt',
-        'friendRequest.finishedAt',
       ],
       where: [
-      { friendRequest: { sender: { id } } },
-      { friendRequest: { recevier: { id } } },
-    ],
+        { friendRequest: { sender: { id } } },
+        { friendRequest: { recevier: { id } } },
+      ],
     });
+
+    const friends = friendships.map(friendship => {
+      const { sender, recevier } = friendship.friendRequest;
+      return sender.id === id ? recevier : sender;
+    });
+
+    return Array.from(new Map(friends.map(friend => [friend.id, friend])).values());
   }
+
+async getAllCommonUsersFriends(id1: number, id2: number): Promise<User[]> {
+  const friends1 = await this.getAllUserFriends(id1);
+  const friends2 = await this.getAllUserFriends(id2);
+  const commonFriends = friends1.filter(friend1 =>
+    friends2.some(friend2 => friend1.id === friend2.id)
+  );
+
+  return commonFriends;
+}
 
   async getAllFriendshipRequests(): Promise<FriendshipRequest[]> {
     return await this.friendshipRequestRepository.find();
