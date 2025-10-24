@@ -90,5 +90,4 @@ export class UsersController {
     return{message: `${user.username}'s entity was succesfully deleted!`}
   }
   // ---------------------------------- Delete -------------------------------------
-
 }
