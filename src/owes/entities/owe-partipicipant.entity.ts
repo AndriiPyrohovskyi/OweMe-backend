@@ -17,6 +17,6 @@ export class OweParticipant {
     @ManyToOne(() => User, user => user.owesIn)
     toUser: User
 
-    @OneToMany(() => OweReturn, oweReturn => oweReturn.participant, { cascade: ['insert', 'update'] })
+    @OneToMany(() => OweReturn, oweReturn => oweReturn.participant, { cascade: ['insert', 'update', 'remove'] })
     oweReturns: OweReturn[]
 }

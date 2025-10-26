@@ -17,15 +17,18 @@ export class Group {
     @Column({nullable: true})
     avatarUrl: string;
 
+    @Column({nullable: true})
+    description: string;
+
     @CreateDateColumn()
     createdAt: Date;
 
-    @OneToMany(() => GroupMember, groupMember => groupMember.group, { cascade: ['insert', 'update'] })
+    @OneToMany(() => GroupMember, groupMember => groupMember.group, { cascade: ['insert', 'update', 'remove'] })
     members: GroupMember[];
 
-    @OneToMany(() => RequestToGroup, requestToGroup => requestToGroup.group, { cascade: ['insert', 'update'] })
+    @OneToMany(() => RequestToGroup, requestToGroup => requestToGroup.group, { cascade: ['insert', 'update', 'remove'] })
     recievedRequestsToGroup: RequestToGroup[]
 
-    @OneToMany(() => GroupRolesLog, groupRolesLog => groupRolesLog.group, { cascade: ['insert', 'update'] })
+    @OneToMany(() => GroupRolesLog, groupRolesLog => groupRolesLog.group, { cascade: ['insert', 'update', 'remove'] })
     groupRolesLogs: GroupRolesLog[]
 }

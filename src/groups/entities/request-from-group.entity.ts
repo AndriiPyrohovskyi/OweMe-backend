@@ -1,6 +1,6 @@
 import { RequestStatus } from 'src/common/enums';
 import { User } from 'src/users/entities/user.entity';
-import {Column, CreateDateColumn, Entity, ManyToOne, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn} from 'typeorm';
+import {Column, CreateDateColumn, Entity, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn} from 'typeorm';
 import { GroupMember } from './group-member.entity';
 
 @Entity('RequestFromGroup')
@@ -22,4 +22,7 @@ export class RequestFromGroup {
 
     @Column({nullable: true})
     finishedAt: Date;
+
+    @ManyToOne(() => GroupMember, groupMember => groupMember.canceledRequestsFromGroup, {nullable: true})
+    canceledBy: GroupMember
 }

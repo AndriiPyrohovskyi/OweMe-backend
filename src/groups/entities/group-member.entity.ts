@@ -5,6 +5,7 @@ import { GroupsUserRole } from 'src/common/enums';
 import { GroupRolesLog } from './group-log.entity';
 import { MessageMention } from './message-mention.entity';
 import { RequestFromGroup } from './request-from-group.entity';
+import { RequestToGroup } from './request-to-group.entity';
 
 @Entity('GroupMember')
 export class GroupMember {
@@ -23,15 +24,21 @@ export class GroupMember {
     @CreateDateColumn()
     joinedAt: Date
 
-    @OneToMany(() => GroupRolesLog, groupRolesLog => groupRolesLog.actioner, { cascade: ['insert', 'update'] })
-    rolesInLogs: GroupMember[];
+    @OneToMany(() => GroupRolesLog, groupRolesLog => groupRolesLog.actioner, { cascade: ['insert', 'update', 'remove'] })
+    rolesInLogs: GroupRolesLog[];
 
-    @OneToMany(() => GroupRolesLog, groupRolesLog => groupRolesLog.actioned, { cascade: ['insert', 'update'] })
-    rolesOutLogs: GroupMember[];
+    @OneToMany(() => GroupRolesLog, groupRolesLog => groupRolesLog.actioned, { cascade: ['insert', 'update', 'remove'] })
+    rolesOutLogs: GroupRolesLog[];
 
-    @OneToMany(() => MessageMention, messageMention => messageMention.message, { cascade: ['insert', 'update'] })
+    @OneToMany(() => MessageMention, messageMention => messageMention.message, { cascade: ['insert', 'update', 'remove'] })
     mentions: MessageMention[]
 
-    @OneToMany(() => RequestFromGroup, groupRequest => groupRequest.sender, { cascade: ['insert', 'update'] })
+    @OneToMany(() => RequestFromGroup, groupRequest => groupRequest.sender, { cascade: ['insert', 'update', 'remove'] })
     sendedRequestsFromGroup: RequestFromGroup[]
+
+    @OneToMany(() => RequestToGroup, groupRequest => groupRequest.actioner, { cascade: ['insert', 'update', 'remove'] })
+    actionedGroupRequests: RequestToGroup[]
+
+    @OneToMany(() => RequestFromGroup, requestFromGroup => requestFromGroup.canceledBy, { cascade: ['insert', 'update', 'remove'] })
+    canceledRequestsFromGroup: RequestFromGroup[]
 }

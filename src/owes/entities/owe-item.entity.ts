@@ -32,6 +32,6 @@ export class OweItem {
     @Column({nullable: true})
     finishedAt: Date
 
-    @OneToMany(() => OweParticipant, oweParticipant => oweParticipant.oweItem, { cascade: ['insert', 'update'] })
+    @OneToMany(() => OweParticipant, oweParticipant => oweParticipant.oweItem, { cascade: ['insert', 'update', 'remove'] })
     oweParticipants: OweParticipant[]
 }

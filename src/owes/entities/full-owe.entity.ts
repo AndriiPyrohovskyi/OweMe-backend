@@ -30,7 +30,7 @@ export class FullOwe {
     @Column({enum: OweStatus, default: OweStatus.Opened})
     status: OweStatus;
 
-    @OneToMany(() => OweItem, oweItem => oweItem.fullOwe, { cascade: ['insert', 'update'] })
+    @OneToMany(() => OweItem, oweItem => oweItem.fullOwe, { cascade: ['insert', 'update', 'remove'] })
     oweItems: OweItem[]
 
     @OneToMany(() => MessageOweMention, messageOweMention => messageOweMention.fullOwe, { cascade: ['insert', 'update'] })

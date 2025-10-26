@@ -37,27 +37,27 @@ export class User {
     @CreateDateColumn()
     createdAt: Date;
 
-    @OneToMany(() => UserChangeLog, userChangeLog => userChangeLog.actioned, { cascade: ['insert', 'update'] })
+    @OneToMany(() => UserChangeLog, userChangeLog => userChangeLog.actioned, { cascade: ['insert', 'update', 'remove'] })
     changeLogsIn: UserChangeLog[]; //last element - your role
 
-    @OneToMany(() => UserChangeLog, userChangeLog => userChangeLog.actioner, { cascade: ['insert', 'update'] })
+    @OneToMany(() => UserChangeLog, userChangeLog => userChangeLog.actioner, { cascade: ['insert', 'update', 'remove'] })
     changeLogsOut: UserChangeLog[];
 
-    @OneToMany(() => FriendshipRequest, friendshipRequest => friendshipRequest.sender, { cascade: ['insert', 'update'] })
+    @OneToMany(() => FriendshipRequest, friendshipRequest => friendshipRequest.sender, { cascade: ['insert', 'update', 'remove'] })
     sendedFriendRequests: FriendshipRequest[];
 
-    @OneToMany(() => FriendshipRequest, friendshipRequest => friendshipRequest.recevier, { cascade: ['insert', 'update'] })
+    @OneToMany(() => FriendshipRequest, friendshipRequest => friendshipRequest.recevier, { cascade: ['insert', 'update', 'remove'] })
     receviedFriendRequests: FriendshipRequest[];
 
-    @OneToMany(() => GroupMember, groupMember => groupMember.user, { cascade: ['insert', 'update'] })
+    @OneToMany(() => GroupMember, groupMember => groupMember.user, { cascade: ['insert', 'update', 'remove'] })
     groups: GroupMember[];
 
-    @OneToMany(() => RequestFromGroup, groupRequest => groupRequest.recevier, { cascade: ['insert', 'update'] })
+    @OneToMany(() => RequestFromGroup, groupRequest => groupRequest.recevier, { cascade: ['insert', 'update', 'remove'] })
     receviedGroupRequests: RequestFromGroup[];
 
-    @OneToMany(() => FullOwe, fullOwe => fullOwe.fromUser, { cascade: ['insert', 'update'] })
+    @OneToMany(() => FullOwe, fullOwe => fullOwe.fromUser, { cascade: ['insert', 'update', 'remove'] })
     owesOut: FullOwe[]
 
-    @OneToMany(() => OweParticipant, oweParticipant => oweParticipant.toUser, { cascade: ['insert', 'update'] })
+    @OneToMany(() => OweParticipant, oweParticipant => oweParticipant.toUser, { cascade: ['insert', 'update', 'remove'] })
     owesIn: OweParticipant[]
 }
