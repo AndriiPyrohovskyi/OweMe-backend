@@ -126,8 +126,11 @@ export class FriendsController {
 
   @Put('decline-request/:id')
   @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
-  async declineFriendRequest(@Param('id') id: number): Promise<FriendshipRequest> {
-    return this.friendsService.declineFriendRequest(id);
+  async declineFriendRequest(
+    @Param('id') id: number,
+    @CurrentUser() currentUser: User
+  ): Promise<FriendshipRequest> {
+    return this.friendsService.declineFriendRequest(id, currentUser.id);
   }
 
   @Put('decline-all/:targetUserId')
@@ -139,8 +142,11 @@ export class FriendsController {
 
   @Put('cancel-request/:id')
   @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
-  async cancelFriendRequest(@Param('id') id: number): Promise<FriendshipRequest> {
-    return this.friendsService.cancelFriendRequest(id);
+  async cancelFriendRequest(
+    @Param('id') id: number,
+    @CurrentUser() currentUser: User
+  ): Promise<FriendshipRequest> {
+    return this.friendsService.cancelFriendRequest(id, currentUser.id);
   }
 
   @Put('cancel-all/:targetUserId')

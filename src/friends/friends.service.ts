@@ -109,9 +109,12 @@ export class FriendsService {
       throw new NotFoundException('Friendship request not found');
     }
 
-    // Перевіряємо права користувача (якщо переданий userId)
     if (userId && friendRequest.recevier.id !== userId) {
       throw new ForbiddenException('You can only accept friend requests sent to you');
+    }
+
+    if (friendRequest.requestStatus != RequestStatus.Opened) {
+      throw new ForbiddenException('You can only accept opened friend requests');
     }
 
     friendRequest.requestStatus = RequestStatus.Accepted;
@@ -124,7 +127,7 @@ export class FriendsService {
 
     await this.friendshipRepository.save(friendship);
 
-    return {message: `Friend request from ${friendship.friendRequest.sender.username} was accepted by ${friendship.friendRequest.recevier.username} succesfully.`};
+    return friendship;
   }
 
   async acceptAllFriendRequestsByUser(userId: number): Promise<Friendship[]> {
@@ -154,13 +157,22 @@ export class FriendsService {
     return friendships;
   }
 
-  async declineFriendRequest(requestId: number): Promise<FriendshipRequest> {
+  async declineFriendRequest(requestId: number, userId?: number): Promise<FriendshipRequest> {
     const friendRequest = await this.friendshipRequestRepository.findOne({
       where: { id: requestId },
+      relations: ['sender', 'recevier'],
     });
 
     if (!friendRequest) {
       throw new NotFoundException('Friendship request not found');
+    }
+
+    if (userId && friendRequest.recevier.id !== userId) {
+      throw new ForbiddenException('You can only decline friend requests sent to you');
+    }
+
+    if (friendRequest.requestStatus != RequestStatus.Opened) {
+      throw new ForbiddenException('You can decline only opened friend requests');
     }
 
     friendRequest.requestStatus = RequestStatus.Declined;
@@ -190,13 +202,18 @@ export class FriendsService {
     return friendships;
   }
 
-  async cancelFriendRequest(requestId: number): Promise<FriendshipRequest> {
+  async cancelFriendRequest(requestId: number, userId?: number): Promise<FriendshipRequest> {
     const friendRequest = await this.friendshipRequestRepository.findOne({
       where: { id: requestId },
+      relations: ['sender', 'recevier'],
     });
 
     if (!friendRequest) {
       throw new NotFoundException('Friendship request not found');
+    }
+
+    if (userId && friendRequest.sender.id !== userId) {
+      throw new ForbiddenException('You can only cancel friend requests that you sent');
     }
 
     if (friendRequest.requestStatus != RequestStatus.Opened) {
