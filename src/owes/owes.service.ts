@@ -95,9 +95,6 @@ export class OwesService {
     return await this.oweItemRepository.save(oweItem);
   }
 
-  /**
-   * Додає учасника до OweItem
-   */
   async addParticipant(addParticipantDto: AddParticipantDto): Promise<OweParticipant> {
     const { oweItemId, sum, toUserId, groupId } = addParticipantDto;
 
@@ -106,15 +103,11 @@ export class OwesService {
     return await this.createOweParticipant(oweItem, sum, toUserId, groupId);
   }
 
-  /**
-   * Створює повернення боргу
-   */
   async createOweReturn(returnOweDto: ReturnOweDto): Promise<OweReturn> {
     const { participantId, returned } = returnOweDto;
 
     const participant = await this.getOweParticipant(participantId);
 
-    // Перевіряємо, чи сума повернення не перевищує суму боргу
     const totalReturned = participant.oweReturns
       ? participant.oweReturns.reduce((sum, ret) => sum + ret.returned, 0)
       : 0;
@@ -131,7 +124,6 @@ export class OwesService {
 
     const savedReturn = await this.oweReturnRepository.save(oweReturn);
 
-    // Перевіряємо, чи борг повністю повернуто
     if (totalReturned + returned === participant.sum) {
       participant.oweItem.status = OweStatus.Returned;
       await this.oweItemRepository.save(participant.oweItem);
@@ -143,9 +135,6 @@ export class OwesService {
     return savedReturn;
   }
 
-  /**
-   * Допоміжний метод для створення учасника
-   */
   private async createOweParticipant(
     oweItem: OweItem,
     sum: number,
@@ -171,31 +160,17 @@ export class OwesService {
 
     return participant;
   }
-
-  /**
-   * Допоміжний метод для перевірки існування користувача
-   */
   private async validateUserExists(userId: number): Promise<User> {
     const user = { id: userId } as User;
-    // Тут можна додати реальну перевірку через UsersService, якщо потрібно
     return user;
   }
-
-  /**
-   * Допоміжний метод для перевірки існування групи
-   */
   private async validateGroupExists(groupId: number): Promise<Group> {
     const group = { id: groupId } as Group;
-    // Тут можна додати реальну перевірку через GroupsService, якщо потрібно
     return group;
   }
 
   // ---------------------------------- Create Methods -------------------------------------
   // ---------------------------------- Update Methods -------------------------------------
-  
-  /**
-   * Оновлює FullOwe
-   */
   async updateFullOwe(id: number, updateOweDto: UpdateOweDto): Promise<FullOwe> {
     const fullOwe = await this.getFullOwe(id);
 
@@ -203,10 +178,6 @@ export class OwesService {
 
     return await this.fullOweRepository.save(fullOwe);
   }
-
-  /**
-   * Оновлює OweItem
-   */
   async updateOweItem(id: number, updateOweItemDto: UpdateOweItemDto): Promise<OweItem> {
     const oweItem = await this.getOweItem(id);
 
@@ -214,10 +185,6 @@ export class OwesService {
 
     return await this.oweItemRepository.save(oweItem);
   }
-
-  /**
-   * Оновлює OweParticipant
-   */
   async updateOweParticipant(id: number, updateDto: UpdateOweParticipantDto): Promise<OweParticipant> {
     const participant = await this.getOweParticipant(id);
 
@@ -225,37 +192,238 @@ export class OwesService {
 
     return await this.oweParticipantRepository.save(participant);
   }
-
   // ---------------------------------- Update Methods -------------------------------------
-  // ---------------------------------- Delete Methods -------------------------------------
+  // ---------------------------------- Status Management Methods --------------------------
   
-  /**
-   * Видаляє FullOwe (каскадно видалить всі пов'язані OweItems та OweParticipants)
-   */
+  // FullOwe status management (для відкриття боргу)
+  async cancelFullOwe(fullOweId: number, userId: number): Promise<FullOwe> {
+    const fullOwe = await this.fullOweRepository.findOne({
+      where: { id: fullOweId },
+      relations: ['fromUser'],
+    });
+
+    if (!fullOwe) {
+      throw new NotFoundException(`FullOwe with id ${fullOweId} not found`);
+    }
+
+    if (fullOwe.fromUser.id !== userId) {
+      throw new BadRequestException('Only the owner can cancel the debt request');
+    }
+
+    if (fullOwe.status !== OweStatus.Opened) {
+      throw new BadRequestException('Only opened debt requests can be cancelled');
+    }
+
+    fullOwe.status = OweStatus.Canceled;
+    return await this.fullOweRepository.save(fullOwe);
+  }
+
+  async acceptFullOwe(fullOweId: number, userId: number): Promise<FullOwe> {
+    const fullOwe = await this.fullOweRepository.findOne({
+      where: { id: fullOweId },
+      relations: ['fromUser', 'oweItems', 'oweItems.oweParticipants', 'oweItems.oweParticipants.toUser'],
+    });
+
+    if (!fullOwe) {
+      throw new NotFoundException(`FullOwe with id ${fullOweId} not found`);
+    }
+
+    if (fullOwe.status !== OweStatus.Opened) {
+      throw new BadRequestException('Only opened debt requests can be accepted');
+    }
+
+    // Перевірка, що користувач є одним з учасників боргу
+    const isParticipant = fullOwe.oweItems.some(item => 
+      item.oweParticipants.some(participant => participant.toUser?.id === userId)
+    );
+
+    if (!isParticipant) {
+      throw new BadRequestException('Only debt participants can accept the debt');
+    }
+
+    fullOwe.status = OweStatus.Accepted;
+    return await this.fullOweRepository.save(fullOwe);
+  }
+
+  async declineFullOwe(fullOweId: number, userId: number): Promise<FullOwe> {
+    const fullOwe = await this.fullOweRepository.findOne({
+      where: { id: fullOweId },
+      relations: ['fromUser', 'oweItems', 'oweItems.oweParticipants', 'oweItems.oweParticipants.toUser'],
+    });
+
+    if (!fullOwe) {
+      throw new NotFoundException(`FullOwe with id ${fullOweId} not found`);
+    }
+
+    if (fullOwe.status !== OweStatus.Opened) {
+      throw new BadRequestException('Only opened debt requests can be declined');
+    }
+
+    // Перевірка, що користувач є одним з учасників боргу
+    const isParticipant = fullOwe.oweItems.some(item => 
+      item.oweParticipants.some(participant => participant.toUser?.id === userId)
+    );
+
+    if (!isParticipant) {
+      throw new BadRequestException('Only debt participants can decline the debt');
+    }
+
+    fullOwe.status = OweStatus.Declined;
+    return await this.fullOweRepository.save(fullOwe);
+  }
+
+  // OweItem status management
+  async cancelOweItem(oweItemId: number, userId: number): Promise<OweItem> {
+    const oweItem = await this.oweItemRepository.findOne({
+      where: { id: oweItemId },
+      relations: ['fullOwe', 'fullOwe.fromUser'],
+    });
+
+    if (!oweItem) {
+      throw new NotFoundException(`OweItem with id ${oweItemId} not found`);
+    }
+
+    if (oweItem.fullOwe.fromUser.id !== userId) {
+      throw new BadRequestException('Only the owner can cancel the debt item');
+    }
+
+    if (oweItem.status !== OweStatus.Opened) {
+      throw new BadRequestException('Only opened debt items can be cancelled');
+    }
+
+    oweItem.status = OweStatus.Canceled;
+    return await this.oweItemRepository.save(oweItem);
+  }
+
+  async acceptOweItem(oweItemId: number, userId: number): Promise<OweItem> {
+    const oweItem = await this.oweItemRepository.findOne({
+      where: { id: oweItemId },
+      relations: ['fullOwe', 'fullOwe.fromUser', 'oweParticipants', 'oweParticipants.toUser'],
+    });
+
+    if (!oweItem) {
+      throw new NotFoundException(`OweItem with id ${oweItemId} not found`);
+    }
+
+    if (oweItem.status !== OweStatus.Opened) {
+      throw new BadRequestException('Only opened debt items can be accepted');
+    }
+
+    const isParticipant = oweItem.oweParticipants.some(participant => participant.toUser?.id === userId);
+
+    if (!isParticipant) {
+      throw new BadRequestException('Only debt participants can accept the debt item');
+    }
+
+    oweItem.status = OweStatus.Accepted;
+    return await this.oweItemRepository.save(oweItem);
+  }
+
+  async declineOweItem(oweItemId: number, userId: number): Promise<OweItem> {
+    const oweItem = await this.oweItemRepository.findOne({
+      where: { id: oweItemId },
+      relations: ['fullOwe', 'fullOwe.fromUser', 'oweParticipants', 'oweParticipants.toUser'],
+    });
+
+    if (!oweItem) {
+      throw new NotFoundException(`OweItem with id ${oweItemId} not found`);
+    }
+
+    if (oweItem.status !== OweStatus.Opened) {
+      throw new BadRequestException('Only opened debt items can be declined');
+    }
+
+    const isParticipant = oweItem.oweParticipants.some(participant => participant.toUser?.id === userId);
+
+    if (!isParticipant) {
+      throw new BadRequestException('Only debt participants can decline the debt item');
+    }
+
+    oweItem.status = OweStatus.Declined;
+    return await this.oweItemRepository.save(oweItem);
+  }
+
+  // OweReturn status management (для повернення - власник підтверджує/відхиляє)
+  async cancelOweReturn(oweReturnId: number, userId: number): Promise<OweReturn> {
+    const oweReturn = await this.oweReturnRepository.findOne({
+      where: { id: oweReturnId },
+      relations: ['participant', 'participant.toUser'],
+    });
+
+    if (!oweReturn) {
+      throw new NotFoundException(`OweReturn with id ${oweReturnId} not found`);
+    }
+
+    if (oweReturn.participant.toUser?.id !== userId) {
+      throw new BadRequestException('Only the debtor can cancel the return');
+    }
+
+    if (oweReturn.status !== OweStatus.Opened) {
+      throw new BadRequestException('Only opened returns can be cancelled');
+    }
+
+    oweReturn.status = OweStatus.Canceled;
+    return await this.oweReturnRepository.save(oweReturn);
+  }
+
+  async acceptOweReturn(oweReturnId: number, userId: number): Promise<OweReturn> {
+    const oweReturn = await this.oweReturnRepository.findOne({
+      where: { id: oweReturnId },
+      relations: ['participant', 'participant.oweItem', 'participant.oweItem.fullOwe', 'participant.oweItem.fullOwe.fromUser'],
+    });
+
+    if (!oweReturn) {
+      throw new NotFoundException(`OweReturn with id ${oweReturnId} not found`);
+    }
+
+    if (oweReturn.participant.oweItem.fullOwe.fromUser.id !== userId) {
+      throw new BadRequestException('Only the debt owner can accept the return');
+    }
+
+    if (oweReturn.status !== OweStatus.Opened) {
+      throw new BadRequestException('Only opened returns can be accepted');
+    }
+
+    oweReturn.status = OweStatus.Accepted;
+    return await this.oweReturnRepository.save(oweReturn);
+  }
+
+  async declineOweReturn(oweReturnId: number, userId: number): Promise<OweReturn> {
+    const oweReturn = await this.oweReturnRepository.findOne({
+      where: { id: oweReturnId },
+      relations: ['participant', 'participant.oweItem', 'participant.oweItem.fullOwe', 'participant.oweItem.fullOwe.fromUser'],
+    });
+
+    if (!oweReturn) {
+      throw new NotFoundException(`OweReturn with id ${oweReturnId} not found`);
+    }
+
+    if (oweReturn.participant.oweItem.fullOwe.fromUser.id !== userId) {
+      throw new BadRequestException('Only the debt owner can decline the return');
+    }
+
+    if (oweReturn.status !== OweStatus.Opened) {
+      throw new BadRequestException('Only opened returns can be declined');
+    }
+
+    oweReturn.status = OweStatus.Declined;
+    return await this.oweReturnRepository.save(oweReturn);
+  }
+
+  // ---------------------------------- Status Management Methods --------------------------
+  // ---------------------------------- Delete Methods -------------------------------------
   async deleteFullOwe(id: number): Promise<void> {
     const fullOwe = await this.getFullOwe(id);
     await this.fullOweRepository.remove(fullOwe);
   }
-
-  /**
-   * Видаляє OweItem (каскадно видалить всіх пов'язаних OweParticipants)
-   */
   async deleteOweItem(id: number): Promise<void> {
     const oweItem = await this.getOweItem(id);
     await this.oweItemRepository.remove(oweItem);
   }
-
-  /**
-   * Видаляє OweParticipant (каскадно видалить всі пов'язані OweReturns)
-   */
   async deleteOweParticipant(id: number): Promise<void> {
     const participant = await this.getOweParticipant(id);
     await this.oweParticipantRepository.remove(participant);
   }
-
-  /**
-   * Видаляє OweReturn
-   */
   async deleteOweReturn(id: number): Promise<void> {
     const oweReturn = await this.getOweReturn(id);
     await this.oweReturnRepository.remove(oweReturn);
