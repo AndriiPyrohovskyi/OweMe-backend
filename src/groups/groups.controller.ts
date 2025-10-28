@@ -1,10 +1,10 @@
-import { Controller, Get, Post, Put, Delete, Param, Query, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Query, Body, UseGuards, ForbiddenException } from '@nestjs/common';
 import { GroupsService } from './groups.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { OwnerOrAdminGuard } from 'src/auth/guards/owner-or-admin.guard';
 import { Roles, CurrentUser, TargetUserField } from 'src/common/decorators';
-import { UserRole } from 'src/common/enums';
+import { GroupsUserRole, UserRole } from 'src/common/enums';
 import { User } from 'src/users/entities/user.entity';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { Group } from './entities/group.entity';
@@ -201,9 +201,14 @@ export class GroupsController {
 
   // ---------------------------------- Delete ----------------------------------
   @Delete(':groupId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.Admin)
-  async deleteGroup(@Param('groupId') groupId: number): Promise<void> {
+  @UseGuards(JwtAuthGuard)
+  async deleteGroup(
+    @CurrentUser() currentUser: User,
+    @Param('groupId') groupId: number): Promise<void> {
+    const groupMember = await this.groupsService.getGroupMemberByGroupAndUser(groupId, currentUser.id);
+    if (groupMember.role != GroupsUserRole.Founder) {
+      throw new ForbiddenException('You aren`t fonder of group!')
+    }
     return this.groupsService.deleteGroup(groupId);
   }
 

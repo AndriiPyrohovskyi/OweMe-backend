@@ -24,7 +24,7 @@ export class FullOwe {
     @Column({nullable: true})
     finishedAt: Date
 
-    @ManyToOne(() => User, user => user.owesOut)
+    @ManyToOne(() => User, user => user.owesOut, { onDelete: 'CASCADE' })
     fromUser: User
 
     @Column({enum: OweStatus, default: OweStatus.Opened})

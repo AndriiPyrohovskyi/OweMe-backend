@@ -8,7 +8,7 @@ export class OweItem {
     @PrimaryGeneratedColumn()
     id: number
 
-    @ManyToOne(() => FullOwe, fullOwe => fullOwe.oweItems)
+    @ManyToOne(() => FullOwe, fullOwe => fullOwe.oweItems, { onDelete: 'CASCADE' })
     fullOwe: FullOwe
 
     @Column()

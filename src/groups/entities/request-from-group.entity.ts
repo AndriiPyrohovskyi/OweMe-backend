@@ -8,7 +8,7 @@ export class RequestFromGroup {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @ManyToOne(() => GroupMember, groupMember => groupMember.sendedRequestsFromGroup)
+    @ManyToOne(() => GroupMember, groupMember => groupMember.sendedRequestsFromGroup, { onDelete: 'CASCADE' })
     sender: GroupMember;
 
     @ManyToOne(() => User, user => user.receviedGroupRequests)
@@ -23,6 +23,6 @@ export class RequestFromGroup {
     @Column({nullable: true})
     finishedAt: Date;
 
-    @ManyToOne(() => GroupMember, groupMember => groupMember.canceledRequestsFromGroup, {nullable: true})
+    @ManyToOne(() => GroupMember, groupMember => groupMember.canceledRequestsFromGroup, { nullable: true, onDelete: 'SET NULL' })
     canceledBy: GroupMember
 }

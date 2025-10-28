@@ -10,10 +10,10 @@ export class UserChangeLog{
     @Column({enum: UserRole, default: UserRole.User})
     newRole: UserRole
 
-    @ManyToOne(() => User, user => user.changeLogsOut)
+    @ManyToOne(() => User, user => user.changeLogsOut, { onDelete: 'SET NULL', nullable: true })
     actioner: User;
 
-    @ManyToOne(() => User, user => user.changeLogsIn)
+    @ManyToOne(() => User, user => user.changeLogsIn, { onDelete: 'CASCADE' })
     actioned: User;
 
     @CreateDateColumn()

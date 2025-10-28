@@ -47,11 +47,9 @@ export class GroupsService {
       throw new NotFoundException(`User with id ${userId} not found!`);
     }
 
-    // Створюємо і зберігаємо групу
     const group = this.groupRepository.create(createGroupDto);
     await this.groupRepository.save(group);
 
-    // Створюємо і зберігаємо засновника як члена групи
     const groupMember = this.groupMemberRepository.create({
       group: group, 
       user: founder, 
@@ -59,11 +57,10 @@ export class GroupsService {
     });
     await this.groupMemberRepository.save(groupMember);
 
-    // Створюємо і зберігаємо лог зміни ролі
     const roleLog = this.groupRolesLogRepository.create({
       group: group, 
-      actioner: founder, 
-      actioned: founder, 
+      actioner: groupMember,
+      actioned: groupMember,
       newRole: GroupsUserRole.Founder
     });
     await this.groupRolesLogRepository.save(roleLog);
@@ -102,7 +99,6 @@ export class GroupsService {
   async sendJoinRequestFromGroup(senderId: number, groupId: number, receiverId: number) : Promise<RequestFromGroup> {
     const sender = await this.getGroupMemberByGroupAndUser(groupId, senderId);
     
-    // Перевірка, що відправник має права (не просто Member)
     if (sender.role === GroupsUserRole.Member) {
       throw new ForbiddenException('Only admins can send join requests from group!');
     }
@@ -309,7 +305,6 @@ export class GroupsService {
       throw new ForbiddenException('You can only cancel opened requests to group!');
     }
 
-    // Перевірка, що тільки відправник може скасувати свій запит
     if (userId && requestToGroup.sender.id !== userId) {
       throw new ForbiddenException('You can only cancel requests that you sent!');
     }
@@ -379,14 +374,14 @@ export class GroupsService {
   // ---------------------------------- Delete Methods -------------------------------------
   async deleteGroup(id: number) {
     const group = await this.getGroupById(id);
-    await this.groupRepository.delete(group);
+    await this.groupRepository.delete(id);
   }
 
   async deleteGroupMember(userId: number, groupId: number, requesterId?: number) {
     const groupMember = await this.getGroupMemberByGroupAndUser(groupId, userId);
     if (requesterId) {
       if (userId === requesterId) {
-        await this.groupMemberRepository.delete(groupMember);
+        await this.groupMemberRepository.remove(groupMember);
         return;
       }
       const requester = await this.getGroupMemberByGroupAndUser(groupId, requesterId);
@@ -397,15 +392,19 @@ export class GroupsService {
         throw new ForbiddenException('Cannot remove group founder!');
       }
     }
-    await this.groupMemberRepository.delete(groupMember);
+    await this.groupMemberRepository.remove(groupMember);
   }
   // ---------------------------------- Delete Methods -------------------------------------
   // ---------------------------------- Get Methods ----------------------------------------
   async getUserGroups(id: number): Promise<Group[]> {
-    return this.groupRepository.find({
-      where: { members: { id: id } },
-      relations: ['members'],
-    });
+    return this.groupRepository
+      .createQueryBuilder('group')
+      .innerJoin('group.members', 'member')
+      .innerJoin('member.user', 'user')
+      .where('user.id = :userId', { userId: id })
+      .leftJoinAndSelect('group.members', 'allMembers')
+      .leftJoinAndSelect('allMembers.user', 'memberUser')
+      .getMany();
   }
 
   async getGroupById(groupId: number) : Promise<Group> {
@@ -425,9 +424,12 @@ export class GroupsService {
     if (!user) {
       throw new NotFoundException(`User with id ${userId} not found!`);
     }
-    const groupMember = await this.groupMemberRepository.findOne({where: {group, user}});
+    const groupMember = await this.groupMemberRepository.findOne({
+      where: {group: {id: groupId}, user: {id: userId}},
+      relations: ['group', 'user'],
+    });
     if (!groupMember) {
-      throw new NotFoundException("Group member not found!");
+      throw new ForbiddenException(`User with id ${userId} is not a member of group ${groupId}!`);
     }
     return groupMember;
   }
@@ -455,7 +457,10 @@ export class GroupsService {
   }
 
   async getRequestsToGroupByGroupId(id: number) : Promise<RequestToGroup[]> {
-    const requestToGroup = await this.requestToGroupRepository.find({where: {group: {id: id}}});
+    const requestToGroup = await this.requestToGroupRepository.find({
+      where: {group: {id: id}},
+      relations: ['sender', 'group', 'actioner'],
+    });
     if (!requestToGroup) {
       throw new NotFoundException("Request to group not found!");
     }
@@ -463,7 +468,10 @@ export class GroupsService {
   }
 
   async getRequestsToGroupByUserId(id: number) : Promise<RequestToGroup[]> {
-    const requestToGroup = await this.requestToGroupRepository.find({where: {sender: {id: id}}});
+    const requestToGroup = await this.requestToGroupRepository.find({
+      where: {sender: {id: id}},
+      relations: ['sender', 'group', 'actioner'],
+    });
     if (!requestToGroup) {
       throw new NotFoundException("Request to group not found!");
     }
@@ -471,7 +479,10 @@ export class GroupsService {
   }
 
   async getRequestsFromGroupByUserId(id: number) : Promise<RequestFromGroup[]> {
-    const requestToGroup = await this.requestFromGroupRepository.find({where: {recevier: {id: id}}});
+    const requestToGroup = await this.requestFromGroupRepository.find({
+      where: {recevier: {id: id}},
+      relations: ['sender', 'sender.group', 'recevier', 'canceledBy'],
+    });
     if (!requestToGroup) {
       throw new NotFoundException("Request to group not found!");
     }
@@ -479,7 +490,10 @@ export class GroupsService {
   }
 
   async getRequestsFromGroupByGroupId(id: number) : Promise<RequestFromGroup[]> {
-    const requestFromGroup = await this.requestFromGroupRepository.find({where: {sender: {group: {id: id}}}});
+    const requestFromGroup = await this.requestFromGroupRepository.find({
+      where: {sender: {group: {id: id}}},
+      relations: ['sender', 'sender.group', 'recevier', 'canceledBy'],
+    });
     if (!requestFromGroup) {
       throw new NotFoundException("Request from group not found!");
     }

@@ -19,6 +19,6 @@ export class OweReturn {
     @Column({enum: OweStatus, default: OweStatus.Opened})
     status: OweStatus;
 
-    @ManyToOne(() => OweParticipant, oweParticipant => oweParticipant.oweReturns)
+    @ManyToOne(() => OweParticipant, oweParticipant => oweParticipant.oweReturns, { onDelete: 'CASCADE' })
     participant: OweParticipant
 }

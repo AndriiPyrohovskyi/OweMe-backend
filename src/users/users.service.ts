@@ -61,12 +61,16 @@ export class UsersService {
 
   // ---------------------------------- Delete Methods -------------------------------------
   async deleteUser(id: number): Promise<GetPublicUserDto> {
-    const user = this.getUserById(id);
+    const user = await this.getUserById(id);
     await this.usersRepository.delete(id);
-    if (!user) {
-      throw new NotFoundException(`User with username "${id}" not found`);
-    }
-    return user;
+    return {
+      id: user.id,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      avatarUrl: user.avatarUrl,
+      description: user.description,
+    };
   }
   // ---------------------------------- Delete Methods -------------------------------------
 

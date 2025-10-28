@@ -7,7 +7,7 @@ export class Friendship {
     @PrimaryGeneratedColumn()
     id: number
 
-    @OneToOne(() => FriendshipRequest, friendRequest => friendRequest.friendship, { cascade: true })
+    @OneToOne(() => FriendshipRequest, friendRequest => friendRequest.friendship, { cascade: true, onDelete: 'CASCADE' })
     @JoinColumn()
     friendRequest: FriendshipRequest;
 }

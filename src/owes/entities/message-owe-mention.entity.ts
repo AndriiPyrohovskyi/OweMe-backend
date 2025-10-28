@@ -7,9 +7,9 @@ export class MessageOweMention {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @ManyToOne(() => GroupMessage, groupMessage => groupMessage.mentions)
+    @ManyToOne(() => GroupMessage, groupMessage => groupMessage.mentions, { onDelete: 'CASCADE' })
     message: GroupMessage;
 
-    @ManyToOne(() => FullOwe, fullOwe => fullOwe.oweMentions)
+    @ManyToOne(() => FullOwe, fullOwe => fullOwe.oweMentions, { onDelete: 'CASCADE' })
     fullOwe: FullOwe; 
 }

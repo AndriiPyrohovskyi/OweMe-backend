@@ -8,10 +8,10 @@ export class FriendshipRequest {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @ManyToOne(() => User, user => user.sendedFriendRequests)
+    @ManyToOne(() => User, user => user.sendedFriendRequests, { onDelete: 'CASCADE' })
     sender: User;
 
-    @ManyToOne(() => User, user => user.receviedFriendRequests)
+    @ManyToOne(() => User, user => user.receviedFriendRequests, { onDelete: 'CASCADE' })
     recevier: User;
 
     @Column({enum: RequestStatus, default: RequestStatus.Opened})

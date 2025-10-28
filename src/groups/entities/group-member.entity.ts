@@ -12,7 +12,7 @@ export class GroupMember {
     @PrimaryGeneratedColumn()
     id: number
 
-    @ManyToOne(() => Group, group => group.members)
+    @ManyToOne(() => Group, group => group.members, { onDelete: 'CASCADE' })
     group: Group
 
     @ManyToOne(() => User, user => user.groups)

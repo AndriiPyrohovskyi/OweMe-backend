@@ -11,10 +11,10 @@ export class OweParticipant {
     @Column()
     sum: number
 
-    @ManyToOne(() => OweItem, oweItem => oweItem.oweParticipants)
+    @ManyToOne(() => OweItem, oweItem => oweItem.oweParticipants, { onDelete: 'CASCADE' })
     oweItem: OweItem
 
-    @ManyToOne(() => User, user => user.owesIn)
+    @ManyToOne(() => User, user => user.owesIn, { onDelete: 'CASCADE' })
     toUser: User
 
     @OneToMany(() => OweReturn, oweReturn => oweReturn.participant, { cascade: ['insert', 'update', 'remove'] })

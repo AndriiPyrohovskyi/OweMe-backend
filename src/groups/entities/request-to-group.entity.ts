@@ -12,7 +12,7 @@ export class RequestToGroup {
     @ManyToOne(() => User, user => user.receviedGroupRequests)
     sender: User;
 
-    @ManyToOne(() => Group, group => group.recievedRequestsToGroup)
+    @ManyToOne(() => Group, group => group.recievedRequestsToGroup, { onDelete: 'CASCADE' })
     group: Group;
 
     @Column({enum: RequestStatus, default: RequestStatus.Opened})
@@ -21,7 +21,7 @@ export class RequestToGroup {
     @CreateDateColumn()
     createdAt: Date;
 
-    @ManyToOne(() => GroupMember, groupMember => groupMember.actionedGroupRequests, {nullable: true})
+    @ManyToOne(() => GroupMember, groupMember => groupMember.actionedGroupRequests, { nullable: true, onDelete: 'SET NULL' })
     actioner: GroupMember;
 
     @Column({nullable: true})
