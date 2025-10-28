@@ -7,7 +7,7 @@ export class OwesController {
 
   @Get('healthcheck')
   owesHealthcheck(): object {
-    return this.owesService.owesHealthcheck();
+    return this.owesService.getAllFullOwesByGroupMember(1, 4);
   }
   // ---------------------------------- Get -------------------------------------
   // ---------------------------------- Get -------------------------------------

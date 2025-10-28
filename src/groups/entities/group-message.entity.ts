@@ -7,7 +7,7 @@ export class GroupMessage {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @ManyToOne(() => GroupMember, groupMember => groupMember.rolesInLogs, { onDelete: 'CASCADE' })
+    @ManyToOne(() => GroupMember, { onDelete: 'CASCADE' })
     sender: GroupMember
 
     @Column()

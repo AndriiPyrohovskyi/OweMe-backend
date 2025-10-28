@@ -59,8 +59,8 @@ export class GroupsService {
 
     const roleLog = this.groupRolesLogRepository.create({
       group: group, 
-      actioner: groupMember,
-      actioned: groupMember,
+      actor: groupMember,
+      target: groupMember,
       newRole: GroupsUserRole.Founder
     });
     await this.groupRolesLogRepository.save(roleLog);
@@ -103,8 +103,8 @@ export class GroupsService {
       throw new ForbiddenException('Only admins can send join requests from group!');
     }
 
-    const recevier = await this.requestFromGroupRepository.manager.findOne(User, {where: {id: receiverId}});
-    if (!recevier) {
+    const receiver = await this.requestFromGroupRepository.manager.findOne(User, {where: {id: receiverId}});
+    if (!receiver) {
       throw new NotFoundException(`Receiver with id ${receiverId} not found!`);
     }
 
@@ -116,7 +116,7 @@ export class GroupsService {
 
     const existingRequest = await this.requestFromGroupRepository.findOne({
       where: {
-        recevier: { id: receiverId },
+        receiver: { id: receiverId },
         sender: { group: {id: groupId}},
         requestStatus: RequestStatus.Opened,
       },
@@ -126,7 +126,7 @@ export class GroupsService {
       throw new ForbiddenException(`An open join request from group ${groupId} already exists for user ${receiverId}!`);
     }
 
-    const joinRequest = this.requestFromGroupRepository.create({sender, recevier});
+    const joinRequest = this.requestFromGroupRepository.create({sender, receiver});
     return await this.requestFromGroupRepository.save(joinRequest);
   }
   // ---------------------------------- Create Methods -------------------------------------
@@ -146,7 +146,7 @@ export class GroupsService {
 
     requestToGroup.requestStatus = RequestStatus.Accepted;
     requestToGroup.finishedAt = new Date();
-    requestToGroup.actioner = groupMember;
+    requestToGroup.actor = groupMember;
 
     await this.requestToGroupRepository.save(requestToGroup);
 
@@ -171,7 +171,7 @@ export class GroupsService {
 
       requestToGroup.requestStatus = RequestStatus.Accepted;
       requestToGroup.finishedAt = new Date();
-      requestToGroup.actioner = groupMember;
+      requestToGroup.actor = groupMember;
 
       await this.requestToGroupRepository.save(requestToGroup);
 
@@ -190,7 +190,7 @@ export class GroupsService {
     }
 
     // Перевірка, що тільки отримувач може прийняти запит
-    if (userId && requestFromGroup.recevier.id !== userId) {
+    if (userId && requestFromGroup.receiver.id !== userId) {
       throw new ForbiddenException('You can only accept requests sent to you!');
     }
 
@@ -200,7 +200,7 @@ export class GroupsService {
     await this.requestFromGroupRepository.save(requestFromGroup);
 
     const group = requestFromGroup.sender.group;
-    const user = requestFromGroup.recevier;
+    const user = requestFromGroup.receiver;
     const newMember = this.groupMemberRepository.create({group, user, role: GroupsUserRole.Member});
     await this.groupMemberRepository.save(newMember);
   }
@@ -217,7 +217,7 @@ export class GroupsService {
       requestFromGroup.finishedAt = new Date();
       await this.requestFromGroupRepository.save(requestFromGroup);
 
-      const user = requestFromGroup.recevier;
+      const user = requestFromGroup.receiver;
       const group = requestFromGroup.sender.group;
       const newMember = this.groupMemberRepository.create({group, user, role: GroupsUserRole.Member});
       await this.groupMemberRepository.save(newMember);
@@ -239,7 +239,7 @@ export class GroupsService {
 
     requestToGroup.requestStatus = RequestStatus.Declined;
     requestToGroup.finishedAt = new Date();
-    requestToGroup.actioner = groupMember;
+    requestToGroup.actor = groupMember;
 
     await this.requestToGroupRepository.save(requestToGroup);
   }
@@ -259,7 +259,7 @@ export class GroupsService {
 
       requestToGroup.requestStatus = RequestStatus.Declined;
       requestToGroup.finishedAt = new Date();
-      requestToGroup.actioner = groupMember;
+      requestToGroup.actor = groupMember;
 
       await this.requestToGroupRepository.save(requestToGroup);
     }
@@ -273,7 +273,7 @@ export class GroupsService {
     }
 
     // Перевірка, що тільки отримувач може відхилити запит
-    if (userId && requestFromGroup.recevier.id !== userId) {
+    if (userId && requestFromGroup.receiver.id !== userId) {
       throw new ForbiddenException('You can only decline requests sent to you!');
     }
 
@@ -437,7 +437,7 @@ export class GroupsService {
   async getRequestToGroupById(id: number) : Promise<RequestToGroup> {
     const requestToGroup = await this.requestToGroupRepository.findOne({
       where: {id},
-      relations: ['sender', 'group', 'actioner'],
+      relations: ['sender', 'group', 'actor'],
     });
     if (!requestToGroup) {
       throw new NotFoundException("Request to group not found!");
@@ -448,7 +448,7 @@ export class GroupsService {
   async getRequestFromGroupById(id: number) : Promise<RequestFromGroup> {
     const requestFromGroup = await this.requestFromGroupRepository.findOne({
       where: {id},
-      relations: ['sender', 'sender.group', 'recevier', 'canceledBy'],
+      relations: ['sender', 'sender.group', 'receiver', 'canceledBy'],
     });
     if (!requestFromGroup) {
       throw new NotFoundException("Request from group not found!");
@@ -459,7 +459,7 @@ export class GroupsService {
   async getRequestsToGroupByGroupId(id: number) : Promise<RequestToGroup[]> {
     const requestToGroup = await this.requestToGroupRepository.find({
       where: {group: {id: id}},
-      relations: ['sender', 'group', 'actioner'],
+      relations: ['sender', 'group', 'actor'],
     });
     if (!requestToGroup) {
       throw new NotFoundException("Request to group not found!");
@@ -470,7 +470,7 @@ export class GroupsService {
   async getRequestsToGroupByUserId(id: number) : Promise<RequestToGroup[]> {
     const requestToGroup = await this.requestToGroupRepository.find({
       where: {sender: {id: id}},
-      relations: ['sender', 'group', 'actioner'],
+      relations: ['sender', 'group', 'actor'],
     });
     if (!requestToGroup) {
       throw new NotFoundException("Request to group not found!");
@@ -480,8 +480,8 @@ export class GroupsService {
 
   async getRequestsFromGroupByUserId(id: number) : Promise<RequestFromGroup[]> {
     const requestToGroup = await this.requestFromGroupRepository.find({
-      where: {recevier: {id: id}},
-      relations: ['sender', 'sender.group', 'recevier', 'canceledBy'],
+      where: {receiver: {id: id}},
+      relations: ['sender', 'sender.group', 'receiver', 'canceledBy'],
     });
     if (!requestToGroup) {
       throw new NotFoundException("Request to group not found!");
@@ -492,7 +492,7 @@ export class GroupsService {
   async getRequestsFromGroupByGroupId(id: number) : Promise<RequestFromGroup[]> {
     const requestFromGroup = await this.requestFromGroupRepository.find({
       where: {sender: {group: {id: id}}},
-      relations: ['sender', 'sender.group', 'recevier', 'canceledBy'],
+      relations: ['sender', 'sender.group', 'receiver', 'canceledBy'],
     });
     if (!requestFromGroup) {
       throw new NotFoundException("Request from group not found!");

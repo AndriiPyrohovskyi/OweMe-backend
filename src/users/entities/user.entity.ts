@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany, UpdateDateColumn, Index } from 'typeorm';
 import { UserChangeLog } from './user-change-log.entity';
 import { FriendshipRequest } from 'src/friends/entities/friendship-request.entity';
 import { GroupMember } from 'src/groups/entities/group-member.entity';
@@ -11,53 +11,56 @@ export class User {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column({ nullable: true })
+    @Column({ nullable: true, length: 100 })
     firstName: string;
 
-    @Column({ nullable: true })
+    @Column({ nullable: true, length: 100 })
     lastName: string;
 
-    @Column({unique: true})
+    @Column({ unique: true, length: 50 })
+    @Index()
     username: string;
 
-    @Column()
+    @Column({ length: 255 })
     passwordHash: string;
 
-    @Column({unique: true})
+    @Column({ unique: true, length: 255 })
+    @Index()
     email: string;
 
-    @Column({nullable: true})
+    @Column({ nullable: true, length: 500 })
     avatarUrl: string;
 
-    //maybe in future - theme
-
-    @Column({nullable: true})
+    @Column({ nullable: true, length: 500 })
     description: string;
 
     @CreateDateColumn()
     createdAt: Date;
 
-    @OneToMany(() => UserChangeLog, userChangeLog => userChangeLog.actioned, { cascade: ['insert', 'update', 'remove'] })
-    changeLogsIn: UserChangeLog[]; //last element - your role
+    @UpdateDateColumn()
+    updatedAt: Date;
 
-    @OneToMany(() => UserChangeLog, userChangeLog => userChangeLog.actioner, { cascade: ['insert', 'update', 'remove'] })
-    changeLogsOut: UserChangeLog[];
+    @OneToMany(() => UserChangeLog, userChangeLog => userChangeLog.actioned)
+    changeLogsIn: UserChangeLog[]; // Logs where this user is the target
 
-    @OneToMany(() => FriendshipRequest, friendshipRequest => friendshipRequest.sender, { cascade: ['insert', 'update', 'remove'] })
-    sendedFriendRequests: FriendshipRequest[];
+    @OneToMany(() => UserChangeLog, userChangeLog => userChangeLog.actioner)
+    changeLogsOut: UserChangeLog[]; // Logs where this user is the actor
 
-    @OneToMany(() => FriendshipRequest, friendshipRequest => friendshipRequest.recevier, { cascade: ['insert', 'update', 'remove'] })
-    receviedFriendRequests: FriendshipRequest[];
+    @OneToMany(() => FriendshipRequest, friendshipRequest => friendshipRequest.sender)
+    sentFriendRequests: FriendshipRequest[];
 
-    @OneToMany(() => GroupMember, groupMember => groupMember.user, { cascade: ['insert', 'update', 'remove'] })
+    @OneToMany(() => FriendshipRequest, friendshipRequest => friendshipRequest.receiver)
+    receivedFriendRequests: FriendshipRequest[];
+
+    @OneToMany(() => GroupMember, groupMember => groupMember.user)
     groups: GroupMember[];
 
-    @OneToMany(() => RequestFromGroup, groupRequest => groupRequest.recevier, { cascade: ['insert', 'update', 'remove'] })
-    receviedGroupRequests: RequestFromGroup[];
+    @OneToMany(() => RequestFromGroup, groupRequest => groupRequest.receiver)
+    receivedGroupRequests: RequestFromGroup[];
 
-    @OneToMany(() => FullOwe, fullOwe => fullOwe.fromUser, { cascade: ['insert', 'update', 'remove'] })
+    @OneToMany(() => FullOwe, fullOwe => fullOwe.fromUser)
     owesOut: FullOwe[]
 
-    @OneToMany(() => OweParticipant, oweParticipant => oweParticipant.toUser, { cascade: ['insert', 'update', 'remove'] })
+    @OneToMany(() => OweParticipant, oweParticipant => oweParticipant.toUser)
     owesIn: OweParticipant[]
 }

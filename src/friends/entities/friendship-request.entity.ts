@@ -1,28 +1,32 @@
 import { RequestStatus } from 'src/common/enums';
 import { User } from 'src/users/entities/user.entity';
-import {Column, CreateDateColumn, Entity, ManyToOne, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn} from 'typeorm';
-import { Friendship } from './friendship.entity';
+import {Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn, Index} from 'typeorm';
 
 @Entity('FriendshipRequest')
+@Index(['sender', 'receiver'])
+@Index(['requestStatus'])
 export class FriendshipRequest {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @ManyToOne(() => User, user => user.sendedFriendRequests, { onDelete: 'CASCADE' })
+    @ManyToOne(() => User, user => user.sentFriendRequests, { onDelete: 'CASCADE' })
     sender: User;
 
-    @ManyToOne(() => User, user => user.receviedFriendRequests, { onDelete: 'CASCADE' })
-    recevier: User;
+    @ManyToOne(() => User, user => user.receivedFriendRequests, { onDelete: 'CASCADE' })
+    receiver: User;
 
-    @Column({enum: RequestStatus, default: RequestStatus.Opened})
+    @Column({ enum: RequestStatus, default: RequestStatus.Opened })
     requestStatus: RequestStatus;
 
     @CreateDateColumn()
     createdAt: Date;
 
-    @Column({nullable: true})
-    finishedAt: Date;
+    @UpdateDateColumn()
+    updatedAt: Date;
 
-    @OneToOne(() => Friendship, friendship => friendship.friendRequest, {nullable: true})
-    friendship: Friendship;
+    @Column({ nullable: true })
+    acceptedAt: Date; // When the friend request was accepted (null = pending or declined)
+
+    @Column({ nullable: true })
+    finishedAt: Date; // When the request was finalized (accepted/declined/canceled)
 }

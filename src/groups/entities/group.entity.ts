@@ -1,34 +1,45 @@
-import {Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn} from 'typeorm'
+import {Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn, Index} from 'typeorm'
 import { GroupMember } from './group-member.entity';
 import { GroupRolesLog } from './group-log.entity';
 import { RequestToGroup } from './request-to-group.entity';
+import { OweParticipant } from 'src/owes/entities/owe-partipicipant.entity';
 
 @Entity('Group')
+@Index(['tag'])
+@Index(['name'])
 export class Group {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column()
+    @Column({ length: 100 })
     name: string;
 
-    @Column()
+    @Column({ unique: true, length: 50 })
     tag: string;
+    
 
-    @Column({nullable: true})
+    @Column({ nullable: true, length: 500 })
     avatarUrl: string;
 
-    @Column({nullable: true})
+
+    @Column({ nullable: true, length: 1000 })
     description: string;
 
     @CreateDateColumn()
     createdAt: Date;
 
-    @OneToMany(() => GroupMember, groupMember => groupMember.group, { cascade: ['insert', 'update', 'remove'] })
+    @UpdateDateColumn()
+    updatedAt: Date;
+
+    @OneToMany(() => GroupMember, groupMember => groupMember.group)
     members: GroupMember[];
 
-    @OneToMany(() => RequestToGroup, requestToGroup => requestToGroup.group, { cascade: ['insert', 'update', 'remove'] })
-    recievedRequestsToGroup: RequestToGroup[]
+    @OneToMany(() => RequestToGroup, requestToGroup => requestToGroup.group)
+    receivedRequestsToGroup: RequestToGroup[]
 
-    @OneToMany(() => GroupRolesLog, groupRolesLog => groupRolesLog.group, { cascade: ['insert', 'update', 'remove'] })
+    @OneToMany(() => GroupRolesLog, groupRolesLog => groupRolesLog.group)
     groupRolesLogs: GroupRolesLog[]
+
+    @OneToMany(() => OweParticipant, oweParticipant => oweParticipant.group)
+    groupOwesParticipants: OweParticipant[]
 }

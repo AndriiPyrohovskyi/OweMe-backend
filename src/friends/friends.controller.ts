@@ -1,6 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Param, Query, Body, UseGuards } from '@nestjs/common';
 import { FriendsService } from './friends.service';
-import { Friendship } from './entities/friendship.entity';
 import { FriendshipRequest } from './entities/friendship-request.entity';
 import { User } from 'src/users/entities/user.entity';
 import { Roles, CurrentUser, TargetUserField, FriendRequestRole } from 'src/common/decorators';
@@ -120,7 +119,7 @@ export class FriendsController {
   @Put('accept-all/:targetUserId')
   @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
   @TargetUserField('targetUserId')
-  async acceptAllFriendRequestsByUser(@Param('targetUserId') targetUserId: number): Promise<Friendship[]> {
+  async acceptAllFriendRequestsByUser(@Param('targetUserId') targetUserId: number): Promise<FriendshipRequest[]> {
     return this.friendsService.acceptAllFriendRequestsByUser(targetUserId);
   }
 
@@ -136,7 +135,7 @@ export class FriendsController {
   @Put('decline-all/:targetUserId')
   @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
   @TargetUserField('targetUserId')
-  async declineAllFriendRequestsByUser(@Param('targetUserId') targetUserId: number): Promise<Friendship[]> {
+  async declineAllFriendRequestsByUser(@Param('targetUserId') targetUserId: number): Promise<FriendshipRequest[]> {
     return this.friendsService.declineAllFriendRequestsByUser(targetUserId);
   }
 
@@ -152,7 +151,7 @@ export class FriendsController {
   @Put('cancel-all/:targetUserId')
   @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
   @TargetUserField('targetUserId')
-  async cancelAllFriendRequestsByUser(@Param('targetUserId') targetUserId: number): Promise<Friendship[]> {
+  async cancelAllFriendRequestsByUser(@Param('targetUserId') targetUserId: number): Promise<FriendshipRequest[]> {
     return this.friendsService.cancelAllFriendRequestsByUser(targetUserId);
   }
 
