@@ -1,8 +1,9 @@
-import {Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, Check, Index} from 'typeorm';
+import {Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, Check, Index, UpdateDateColumn} from 'typeorm';
 import { OweItem } from './owe-item.entity';
 import { User } from 'src/users/entities/user.entity';
 import { OweReturn } from './owe-return.entity';
 import { Group } from 'src/groups/entities/group.entity';
+import { OweStatus } from 'src/common/enums';
 
 @Entity('OweParticipant')
 @Check(`("toUserId" IS NOT NULL AND "groupId" IS NULL) OR ("toUserId" IS NULL AND "groupId" IS NOT NULL)`)
@@ -10,6 +11,7 @@ import { Group } from 'src/groups/entities/group.entity';
 @Index(['oweItem', 'group'])
 @Index(['toUser'])
 @Index(['group'])
+@Index(['status'])
 export class OweParticipant {
     @PrimaryGeneratedColumn()
     id: number
@@ -20,14 +22,20 @@ export class OweParticipant {
     @ManyToOne(() => OweItem, oweItem => oweItem.oweParticipants, { onDelete: 'CASCADE' })
     oweItem: OweItem
 
-    @ManyToOne(() => User, user => user.owesIn, { onDelete: 'CASCADE', nullable: true })
+    @ManyToOne(() => User, user => user.owesIn, { onDelete: 'CASCADE'})
     toUser: User
 
     @ManyToOne(() => Group, group => group.groupOwesParticipants, { onDelete: 'CASCADE', nullable: true })
     group: Group
 
+    @Column({ enum: OweStatus, default: OweStatus.Opened })
+    status: OweStatus
+
     @CreateDateColumn()
     createdAt: Date
+
+    @UpdateDateColumn()
+    updatedAt: Date
 
     @OneToMany(() => OweReturn, oweReturn => oweReturn.participant, { cascade: ['insert', 'update', 'remove'] })
     oweReturns: OweReturn[]

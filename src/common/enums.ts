@@ -27,3 +27,10 @@ export enum OweStatus {
     Returned = "Returned",
     PartlyReturned = "PartlyReturned"
 }
+
+export enum ReturnStatus {
+    Opened = "Opened",
+    Canceled = "Canceled",
+    Accepted = "Accepted",
+    Declined = "Declined"
+}

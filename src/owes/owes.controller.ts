@@ -2,7 +2,8 @@ import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards } from '@nes
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
 import { OwesService } from './owes.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
-import { CurrentUser } from 'src/common/decorators';
+import { OweAccessGuard } from 'src/auth/guards/owe-access.guard';
+import { CurrentUser, Roles, TargetUserField } from 'src/common/decorators';
 import { User } from 'src/users/entities/user.entity';
 import { CreateOweDto } from './dto/create-owe.dto';
 import { AddParticipantDto } from './dto/add-partipicipant.dto';
@@ -12,6 +13,12 @@ import { FullOwe } from './entities/full-owe.entity';
 import { OweItem } from './entities/owe-item.entity';
 import { OweParticipant } from './entities/owe-partipicipant.entity';
 import { OweReturn } from './entities/owe-return.entity';
+import { OwnerOrAdminGuard } from 'src/auth/guards/owner-or-admin.guard';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { UserRole } from 'src/common/enums';
+import { GroupMemberOrAdminGuard } from 'src/auth/guards/group-member-or-admin.guard';
+import { OweOwnerGuard } from 'src/auth/guards/owe-owner.guard';
+import { ParticipantUserGuard } from 'src/auth/guards/participant-user.guard';
 
 @ApiTags('owes')
 @ApiBearerAuth()
@@ -29,25 +36,17 @@ export class OwesController {
   // ---------------------------------- Get -------------------------------------
   
   @Get('full')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Admin)
   @ApiOperation({ summary: 'Отримати всі повні борги' })
   @ApiResponse({ status: 200, description: 'Список всіх боргів', type: [FullOwe] })
   async getAllFullOwes(): Promise<FullOwe[]> {
     return this.owesService.getAllFullOwes();
   }
 
-  @Get('full/:id')
-  @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Отримати повний борг за ID' })
-  @ApiParam({ name: 'id', description: 'ID боргу' })
-  @ApiResponse({ status: 200, description: 'Інформація про борг', type: FullOwe })
-  @ApiResponse({ status: 404, description: 'Борг не знайдений' })
-  async getFullOwe(@Param('id') id: number): Promise<FullOwe> {
-    return this.owesService.getFullOwe(id);
-  }
-
   @Get('full/user/:userId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
+  @TargetUserField('userId')
   @ApiOperation({ summary: 'Отримати всі борги користувача (надіслані та отримані)' })
   @ApiParam({ name: 'userId', description: 'ID користувача' })
   @ApiResponse({ status: 200, description: 'Об\'єкт з надісланими та отриманими боргами' })
@@ -64,7 +63,7 @@ export class OwesController {
   }
 
   @Get('full/group/:groupId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, GroupMemberOrAdminGuard)
   @ApiOperation({ summary: 'Отримати всі борги групи' })
   @ApiParam({ name: 'groupId', description: 'ID групи' })
   @ApiResponse({ status: 200, description: 'Список боргів групи', type: [FullOwe] })
@@ -73,7 +72,7 @@ export class OwesController {
   }
 
   @Get('full/group/:groupId/member/:userId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, GroupMemberOrAdminGuard)
   @ApiOperation({ summary: 'Отримати борги учасника групи' })
   @ApiParam({ name: 'groupId', description: 'ID групи' })
   @ApiParam({ name: 'userId', description: 'ID користувача' })
@@ -85,26 +84,29 @@ export class OwesController {
     return this.owesService.getAllFullOwesByGroupMember(userId, groupId);
   }
 
+  @Get('full/:id')
+  @UseGuards(JwtAuthGuard, OweAccessGuard)
+  @ApiOperation({ summary: 'Отримати повний борг за ID' })
+  @ApiParam({ name: 'id', description: 'ID боргу' })
+  @ApiResponse({ status: 200, description: 'Інформація про борг', type: FullOwe })
+  @ApiResponse({ status: 404, description: 'Борг не знайдений' })
+  @ApiResponse({ status: 403, description: 'Немає доступу до цього боргу' })
+  async getFullOwe(@Param('id') id: number): Promise<FullOwe> {
+    return this.owesService.getFullOwe(id);
+  }
+
   @Get('items')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Admin)
   @ApiOperation({ summary: 'Отримати всі пункти боргів' })
   @ApiResponse({ status: 200, description: 'Список всіх пунктів боргів', type: [OweItem] })
   async getAllOweItems(): Promise<OweItem[]> {
     return this.owesService.getAllOweItems();
   }
 
-  @Get('items/:id')
-  @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Отримати пункт боргу за ID' })
-  @ApiParam({ name: 'id', description: 'ID пункту боргу' })
-  @ApiResponse({ status: 200, description: 'Інформація про пункт боргу', type: OweItem })
-  @ApiResponse({ status: 404, description: 'Пункт не знайдений' })
-  async getOweItem(@Param('id') id: number): Promise<OweItem> {
-    return this.owesService.getOweItem(id);
-  }
-
   @Get('items/user/:userId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
+  @TargetUserField('userId')
   @ApiOperation({ summary: 'Отримати пункти боргів користувача' })
   @ApiParam({ name: 'userId', description: 'ID користувача' })
   @ApiResponse({ status: 200, description: 'Пункти боргів користувача' })
@@ -121,7 +123,7 @@ export class OwesController {
   }
 
   @Get('items/group/:groupId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, GroupMemberOrAdminGuard)
   @ApiOperation({ summary: 'Отримати пункти боргів групи' })
   @ApiParam({ name: 'groupId', description: 'ID групи' })
   @ApiResponse({ status: 200, description: 'Пункти боргів групи', type: [OweItem] })
@@ -129,26 +131,29 @@ export class OwesController {
     return this.owesService.getAllOweItemsByGroup(groupId);
   }
 
+  @Get('items/:id')
+  @UseGuards(JwtAuthGuard, OweAccessGuard)
+  @ApiOperation({ summary: 'Отримати пункт боргу за ID' })
+  @ApiParam({ name: 'id', description: 'ID пункту боргу' })
+  @ApiResponse({ status: 200, description: 'Інформація про пункт боргу', type: OweItem })
+  @ApiResponse({ status: 404, description: 'Пункт не знайдений' })
+  @ApiResponse({ status: 403, description: 'Немає доступу до цього пункту боргу' })
+  async getOweItem(@Param('id') id: number): Promise<OweItem> {
+    return this.owesService.getOweItem(id);
+  }
+
   @Get('participants')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Admin)
   @ApiOperation({ summary: 'Отримати всіх учасників боргів' })
   @ApiResponse({ status: 200, description: 'Список всіх учасників боргів', type: [OweParticipant] })
   async getAllOweParticipants(): Promise<OweParticipant[]> {
     return this.owesService.getAllOweParticipant();
   }
 
-  @Get('participants/:id')
-  @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Отримати учасника боргу за ID' })
-  @ApiParam({ name: 'id', description: 'ID учасника' })
-  @ApiResponse({ status: 200, description: 'Інформація про учасника', type: OweParticipant })
-  @ApiResponse({ status: 404, description: 'Учасник не знайдений' })
-  async getOweParticipant(@Param('id') id: number): Promise<OweParticipant> {
-    return this.owesService.getOweParticipant(id);
-  }
-
   @Get('participants/user/:userId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
+  @TargetUserField('userId')
   @ApiOperation({ summary: 'Отримати участь користувача в боргах' })
   @ApiParam({ name: 'userId', description: 'ID користувача' })
   @ApiResponse({ status: 200, description: 'Участь користувача в боргах' })
@@ -165,7 +170,7 @@ export class OwesController {
   }
 
   @Get('participants/group/:groupId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, GroupMemberOrAdminGuard)
   @ApiOperation({ summary: 'Отримати учасників боргів групи' })
   @ApiParam({ name: 'groupId', description: 'ID групи' })
   @ApiResponse({ status: 200, description: 'Учасники боргів групи', type: [OweParticipant] })
@@ -173,26 +178,29 @@ export class OwesController {
     return this.owesService.getAllOweParticipantsByGroup(groupId);
   }
 
+  @Get('participants/:id')
+  @UseGuards(JwtAuthGuard, OweAccessGuard)
+  @ApiOperation({ summary: 'Отримати учасника боргу за ID' })
+  @ApiParam({ name: 'id', description: 'ID учасника' })
+  @ApiResponse({ status: 200, description: 'Інформація про учасника', type: OweParticipant })
+  @ApiResponse({ status: 404, description: 'Учасник не знайдений' })
+  @ApiResponse({ status: 403, description: 'Немає доступу до цього учасника' })
+  async getOweParticipant(@Param('id') id: number): Promise<OweParticipant> {
+    return this.owesService.getOweParticipant(id);
+  }
+
   @Get('returns')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Admin)
   @ApiOperation({ summary: 'Отримати всі повернення боргів' })
   @ApiResponse({ status: 200, description: 'Список всіх повернень', type: [OweReturn] })
   async getAllOweReturns(): Promise<OweReturn[]> {
     return this.owesService.getAllOweReturns();
   }
 
-  @Get('returns/:id')
-  @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Отримати повернення боргу за ID' })
-  @ApiParam({ name: 'id', description: 'ID повернення' })
-  @ApiResponse({ status: 200, description: 'Інформація про повернення', type: OweReturn })
-  @ApiResponse({ status: 404, description: 'Повернення не знайдене' })
-  async getOweReturn(@Param('id') id: number): Promise<OweReturn> {
-    return this.owesService.getOweReturn(id);
-  }
-
   @Get('returns/user/:userId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OwnerOrAdminGuard)
+  @TargetUserField('userId')
   @ApiOperation({ summary: 'Отримати повернення боргів користувача' })
   @ApiParam({ name: 'userId', description: 'ID користувача' })
   @ApiResponse({ status: 200, description: 'Повернення боргів користувача' })
@@ -209,7 +217,7 @@ export class OwesController {
   }
 
   @Get('returns/group/:groupId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, GroupMemberOrAdminGuard)
   @ApiOperation({ summary: 'Отримати повернення боргів групи' })
   @ApiParam({ name: 'groupId', description: 'ID групи' })
   @ApiResponse({ status: 200, description: 'Повернення боргів групи', type: [OweReturn] })
@@ -217,22 +225,34 @@ export class OwesController {
     return this.owesService.getAllOweReturnsByGroup(groupId);
   }
 
+  @Get('returns/:id')
+  @UseGuards(JwtAuthGuard, OweAccessGuard)
+  @ApiOperation({ summary: 'Отримати повернення боргу за ID' })
+  @ApiParam({ name: 'id', description: 'ID повернення' })
+  @ApiResponse({ status: 200, description: 'Інформація про повернення', type: OweReturn })
+  @ApiResponse({ status: 404, description: 'Повернення не знайдене' })
+  @ApiResponse({ status: 403, description: 'Немає доступу до цього повернення' })
+  async getOweReturn(@Param('id') id: number): Promise<OweReturn> {
+    return this.owesService.getOweReturn(id);
+  }
+
   // ---------------------------------- Get -------------------------------------
 
   // ---------------------------------- Post ------------------------------------
   
   @Post('full')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OweOwnerGuard)
   @ApiOperation({ summary: 'Створити повний борг' })
   @ApiBody({ type: CreateOweDto, description: 'Дані для створення боргу' })
   @ApiResponse({ status: 201, description: 'Борг успішно створений', type: FullOwe })
   @ApiResponse({ status: 400, description: 'Невірні дані' })
+  @ApiResponse({ status: 403, description: 'Недостатньо прав' })
   async createFullOwe(@Body() createOweDto: CreateOweDto): Promise<FullOwe> {
     return this.owesService.createFullOwe(createOweDto);
   }
 
   @Post('items')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OweOwnerGuard)
   @ApiOperation({ summary: 'Створити пункт боргу' })
   @ApiBody({ 
     schema: {
@@ -245,26 +265,29 @@ export class OwesController {
   })
   @ApiResponse({ status: 201, description: 'Пункт боргу успішно створений', type: OweItem })
   @ApiResponse({ status: 400, description: 'Невірні дані' })
+  @ApiResponse({ status: 403, description: 'Недостатньо прав' })
   async createOweItem(@Body() body: { fullOweId: number; itemDto: any }): Promise<OweItem> {
     return this.owesService.createOweItem(body.fullOweId, body.itemDto);
   }
 
   @Post('participants')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OweOwnerGuard)
   @ApiOperation({ summary: 'Додати учасника до боргу' })
   @ApiBody({ type: AddParticipantDto, description: 'Дані для додавання учасника' })
   @ApiResponse({ status: 201, description: 'Учасник успішно доданий', type: OweParticipant })
   @ApiResponse({ status: 400, description: 'Невірні дані' })
+  @ApiResponse({ status: 403, description: 'Недостатньо прав' })
   async addParticipant(@Body() addParticipantDto: AddParticipantDto): Promise<OweParticipant> {
     return this.owesService.addParticipant(addParticipantDto);
   }
 
   @Post('returns')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OweOwnerGuard)
   @ApiOperation({ summary: 'Створити повернення боргу' })
   @ApiBody({ type: ReturnOweDto, description: 'Дані для створення повернення' })
   @ApiResponse({ status: 201, description: 'Повернення успішно створене', type: OweReturn })
   @ApiResponse({ status: 400, description: 'Невірні дані' })
+  @ApiResponse({ status: 403, description: 'Недостатньо прав' })
   async createOweReturn(@Body() returnOweDto: ReturnOweDto): Promise<OweReturn> {
     return this.owesService.createOweReturn(returnOweDto);
   }
@@ -274,12 +297,13 @@ export class OwesController {
   // ---------------------------------- Put -------------------------------------
   
   @Put('full/:id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OweOwnerGuard)
   @ApiOperation({ summary: 'Оновити повний борг' })
   @ApiParam({ name: 'id', description: 'ID боргу' })
   @ApiBody({ type: UpdateOweDto, description: 'Дані для оновлення боргу' })
   @ApiResponse({ status: 200, description: 'Борг успішно оновлений', type: FullOwe })
   @ApiResponse({ status: 404, description: 'Борг не знайдений' })
+  @ApiResponse({ status: 403, description: 'Недостатньо прав' })
   async updateFullOwe(
     @Param('id') id: number,
     @Body() updateOweDto: UpdateOweDto
@@ -288,12 +312,13 @@ export class OwesController {
   }
 
   @Put('items/:id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OweOwnerGuard)
   @ApiOperation({ summary: 'Оновити пункт боргу' })
   @ApiParam({ name: 'id', description: 'ID пункту боргу' })
   @ApiBody({ type: UpdateOweItemDto, description: 'Дані для оновлення пункту' })
   @ApiResponse({ status: 200, description: 'Пункт успішно оновлений', type: OweItem })
   @ApiResponse({ status: 404, description: 'Пункт не знайдений' })
+  @ApiResponse({ status: 403, description: 'Недостатньо прав' })
   async updateOweItem(
     @Param('id') id: number,
     @Body() updateOweItemDto: UpdateOweItemDto
@@ -302,12 +327,13 @@ export class OwesController {
   }
 
   @Put('participants/:id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OweOwnerGuard)
   @ApiOperation({ summary: 'Оновити учасника боргу' })
   @ApiParam({ name: 'id', description: 'ID учасника' })
   @ApiBody({ type: UpdateOweParticipantDto, description: 'Дані для оновлення учасника' })
   @ApiResponse({ status: 200, description: 'Учасник успішно оновлений', type: OweParticipant })
   @ApiResponse({ status: 404, description: 'Учасник не знайдений' })
+  @ApiResponse({ status: 403, description: 'Недостатньо прав' })
   async updateOweParticipant(
     @Param('id') id: number,
     @Body() updateDto: UpdateOweParticipantDto
@@ -315,95 +341,52 @@ export class OwesController {
     return this.owesService.updateOweParticipant(id, updateDto);
   }
 
-  // Status management endpoints for FullOwe (для відкриття боргу)
-  @Put('full/:id/cancel')
-  @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Скасувати борг (тільки власник)' })
-  @ApiParam({ name: 'id', description: 'ID боргу' })
-  @ApiResponse({ status: 200, description: 'Борг успішно скасований', type: FullOwe })
+  // Status management endpoints for OweParticipant
+  @Put('participants/:id/cancel')
+  @UseGuards(JwtAuthGuard, OweOwnerGuard)
+  @ApiOperation({ summary: 'Скасувати учасника боргу (тільки власник)' })
+  @ApiParam({ name: 'id', description: 'ID учасника' })
+  @ApiResponse({ status: 200, description: 'Учасника успішно скасовано', type: OweParticipant })
   @ApiResponse({ status: 403, description: 'Недостатньо прав' })
-  @ApiResponse({ status: 404, description: 'Борг не знайдений' })
-  async cancelFullOwe(
+  @ApiResponse({ status: 404, description: 'Учасник не знайдений' })
+  async cancelOweParticipant(
     @Param('id') id: number,
     @CurrentUser() currentUser: User
-  ): Promise<FullOwe> {
-    return this.owesService.cancelFullOwe(id, currentUser.id);
+  ): Promise<OweParticipant> {
+    return this.owesService.cancelOweParticipant(id, currentUser.id);
   }
 
-  @Put('full/:id/accept')
-  @UseGuards(JwtAuthGuard)
+  @Put('participants/:id/accept')
+  @UseGuards(JwtAuthGuard, ParticipantUserGuard)
   @ApiOperation({ summary: 'Прийняти борг (тільки учасник)' })
-  @ApiParam({ name: 'id', description: 'ID боргу' })
-  @ApiResponse({ status: 200, description: 'Борг успішно прийнятий', type: FullOwe })
+  @ApiParam({ name: 'id', description: 'ID учасника' })
+  @ApiResponse({ status: 200, description: 'Борг успішно прийнятий', type: OweParticipant })
   @ApiResponse({ status: 403, description: 'Недостатньо прав' })
-  @ApiResponse({ status: 404, description: 'Борг не знайдений' })
-  async acceptFullOwe(
+  @ApiResponse({ status: 404, description: 'Учасник не знайдений' })
+  async acceptOweParticipant(
     @Param('id') id: number,
     @CurrentUser() currentUser: User
-  ): Promise<FullOwe> {
-    return this.owesService.acceptFullOwe(id, currentUser.id);
+  ): Promise<OweParticipant> {
+    return this.owesService.acceptOweParticipant(id, currentUser.id);
   }
 
-  @Put('full/:id/decline')
-  @UseGuards(JwtAuthGuard)
+  @Put('participants/:id/decline')
+  @UseGuards(JwtAuthGuard, ParticipantUserGuard)
   @ApiOperation({ summary: 'Відхилити борг (тільки учасник)' })
-  @ApiParam({ name: 'id', description: 'ID боргу' })
-  @ApiResponse({ status: 200, description: 'Борг успішно відхилений', type: FullOwe })
+  @ApiParam({ name: 'id', description: 'ID учасника' })
+  @ApiResponse({ status: 200, description: 'Борг успішно відхилений', type: OweParticipant })
   @ApiResponse({ status: 403, description: 'Недостатньо прав' })
-  @ApiResponse({ status: 404, description: 'Борг не знайдений' })
-  async declineFullOwe(
+  @ApiResponse({ status: 404, description: 'Учасник не знайдений' })
+  async declineOweParticipant(
     @Param('id') id: number,
     @CurrentUser() currentUser: User
-  ): Promise<FullOwe> {
-    return this.owesService.declineFullOwe(id, currentUser.id);
-  }
-
-  // Status management endpoints for OweItem
-  @Put('items/:id/cancel')
-  @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Скасувати пункт боргу (тільки власник боргу)' })
-  @ApiParam({ name: 'id', description: 'ID пункту боргу' })
-  @ApiResponse({ status: 200, description: 'Пункт успішно скасований', type: OweItem })
-  @ApiResponse({ status: 403, description: 'Недостатньо прав' })
-  @ApiResponse({ status: 404, description: 'Пункт не знайдений' })
-  async cancelOweItem(
-    @Param('id') id: number,
-    @CurrentUser() currentUser: User
-  ): Promise<OweItem> {
-    return this.owesService.cancelOweItem(id, currentUser.id);
-  }
-
-  @Put('items/:id/accept')
-  @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Прийняти пункт боргу (тільки учасник)' })
-  @ApiParam({ name: 'id', description: 'ID пункту боргу' })
-  @ApiResponse({ status: 200, description: 'Пункт успішно прийнятий', type: OweItem })
-  @ApiResponse({ status: 403, description: 'Недостатньо прав' })
-  @ApiResponse({ status: 404, description: 'Пункт не знайдений' })
-  async acceptOweItem(
-    @Param('id') id: number,
-    @CurrentUser() currentUser: User
-  ): Promise<OweItem> {
-    return this.owesService.acceptOweItem(id, currentUser.id);
-  }
-
-  @Put('items/:id/decline')
-  @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Відхилити пункт боргу (тільки учасник)' })
-  @ApiParam({ name: 'id', description: 'ID пункту боргу' })
-  @ApiResponse({ status: 200, description: 'Пункт успішно відхилений', type: OweItem })
-  @ApiResponse({ status: 403, description: 'Недостатньо прав' })
-  @ApiResponse({ status: 404, description: 'Пункт не знайдений' })
-  async declineOweItem(
-    @Param('id') id: number,
-    @CurrentUser() currentUser: User
-  ): Promise<OweItem> {
-    return this.owesService.declineOweItem(id, currentUser.id);
+  ): Promise<OweParticipant> {
+    return this.owesService.declineOweParticipant(id, currentUser.id);
   }
 
   // Status management endpoints for OweReturn (для повернення)
   @Put('returns/:id/cancel')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OweOwnerGuard)
   @ApiOperation({ summary: 'Скасувати повернення боргу (тільки учасник боргу)' })
   @ApiParam({ name: 'id', description: 'ID повернення' })
   @ApiResponse({ status: 200, description: 'Повернення успішно скасоване', type: OweReturn })
@@ -417,7 +400,7 @@ export class OwesController {
   }
 
   @Put('returns/:id/accept')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OweOwnerGuard)
   @ApiOperation({ summary: 'Прийняти повернення боргу (тільки власник боргу)' })
   @ApiParam({ name: 'id', description: 'ID повернення' })
   @ApiResponse({ status: 200, description: 'Повернення успішно прийняте', type: OweReturn })
@@ -431,7 +414,7 @@ export class OwesController {
   }
 
   @Put('returns/:id/decline')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OweOwnerGuard)
   @ApiOperation({ summary: 'Відхилити повернення боргу (тільки власник боргу)' })
   @ApiParam({ name: 'id', description: 'ID повернення' })
   @ApiResponse({ status: 200, description: 'Повернення успішно відхилене', type: OweReturn })
@@ -449,41 +432,45 @@ export class OwesController {
   // ---------------------------------- Delete ----------------------------------
   
   @Delete('full/:id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OweOwnerGuard)
   @ApiOperation({ summary: 'Видалити повний борг' })
   @ApiParam({ name: 'id', description: 'ID боргу' })
   @ApiResponse({ status: 200, description: 'Борг успішно видалений' })
   @ApiResponse({ status: 404, description: 'Борг не знайдений' })
+  @ApiResponse({ status: 403, description: 'Недостатньо прав' })
   async deleteFullOwe(@Param('id') id: number): Promise<void> {
     return this.owesService.deleteFullOwe(id);
   }
 
   @Delete('items/:id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OweOwnerGuard)
   @ApiOperation({ summary: 'Видалити пункт боргу' })
   @ApiParam({ name: 'id', description: 'ID пункту боргу' })
   @ApiResponse({ status: 200, description: 'Пункт успішно видалений' })
   @ApiResponse({ status: 404, description: 'Пункт не знайдений' })
+  @ApiResponse({ status: 403, description: 'Недостатньо прав' })
   async deleteOweItem(@Param('id') id: number): Promise<void> {
     return this.owesService.deleteOweItem(id);
   }
 
   @Delete('participants/:id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OweOwnerGuard)
   @ApiOperation({ summary: 'Видалити учасника з боргу' })
   @ApiParam({ name: 'id', description: 'ID учасника' })
   @ApiResponse({ status: 200, description: 'Учасник успішно видалений' })
   @ApiResponse({ status: 404, description: 'Учасник не знайдений' })
+  @ApiResponse({ status: 403, description: 'Недостатньо прав' })
   async deleteOweParticipant(@Param('id') id: number): Promise<void> {
     return this.owesService.deleteOweParticipant(id);
   }
 
   @Delete('returns/:id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OweOwnerGuard)
   @ApiOperation({ summary: 'Видалити повернення боргу' })
   @ApiParam({ name: 'id', description: 'ID повернення' })
   @ApiResponse({ status: 200, description: 'Повернення успішно видалене' })
   @ApiResponse({ status: 404, description: 'Повернення не знайдене' })
+  @ApiResponse({ status: 403, description: 'Недостатньо прав' })
   async deleteOweReturn(@Param('id') id: number): Promise<void> {
     return this.owesService.deleteOweReturn(id);
   }

@@ -18,12 +18,7 @@ export class OwnerOrAdminGuard implements CanActivate {
     }
 
     // Перевіряємо чи є користувач адміністратором
-    let userRole = UserRole.User;
-    if (user.changeLogsIn && user.changeLogsIn.length > 0) {
-      userRole = user.changeLogsIn[user.changeLogsIn.length - 1]?.newRole || UserRole.User;
-    }
-    
-    if (userRole === UserRole.Admin) {
+    if (user.role === UserRole.Admin) {
       return true;
     }
 

@@ -1,12 +1,10 @@
 import { User } from 'src/users/entities/user.entity';
 import {Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn, Index} from 'typeorm';
 import { OweItem } from './owe-item.entity';
-import { OweStatus } from 'src/common/enums';
 import { MessageOweMention } from './message-owe-mention.entity';
 
 @Entity('FullOwe')
-@Index(['fromUser', 'status'])
-@Index(['status'])
+@Index(['fromUser'])
 @Index(['createdAt'])
 export class FullOwe {
     @PrimaryGeneratedColumn()
@@ -27,14 +25,8 @@ export class FullOwe {
     @UpdateDateColumn()
     updatedAt: Date
 
-    @Column({ nullable: true })
-    finishedAt: Date
-
     @ManyToOne(() => User, user => user.owesOut, { onDelete: 'CASCADE' })
     fromUser: User
-
-    @Column({ enum: OweStatus, default: OweStatus.Opened })
-    status: OweStatus;
 
     @OneToMany(() => OweItem, oweItem => oweItem.fullOwe, { cascade: ['insert', 'update', 'remove'] })
     oweItems: OweItem[]

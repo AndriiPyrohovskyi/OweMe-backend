@@ -7,7 +7,12 @@ import { OweItem } from './entities/owe-item.entity';
 import { OweParticipant } from './entities/owe-partipicipant.entity';
 import { OweReturn } from './entities/owe-return.entity';
 import { MessageOweMention } from './entities/message-owe-mention.entity';
+import { GroupMember } from 'src/groups/entities/group-member.entity';
 import { UsersModule } from 'src/users/users.module';
+import { OweAccessGuard } from 'src/auth/guards/owe-access.guard';
+import { GroupMemberOrAdminGuard } from 'src/auth/guards/group-member-or-admin.guard';
+import { OweOwnerGuard } from 'src/auth/guards/owe-owner.guard';
+import { ParticipantUserGuard } from 'src/auth/guards/participant-user.guard';
 
 @Module({
   imports: [
@@ -16,11 +21,12 @@ import { UsersModule } from 'src/users/users.module';
     OweItem, 
     OweParticipant, 
     OweReturn, 
-    MessageOweMention
+    MessageOweMention,
+    GroupMember
   ]), UsersModule
 ],
   controllers: [OwesController],
-  providers: [OwesService],
+  providers: [OwesService, OweAccessGuard, GroupMemberOrAdminGuard, OweOwnerGuard, ParticipantUserGuard],
   exports: [OwesService]
 })
 

@@ -22,6 +22,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!user) {
       throw new UnauthorizedException();
     }
-    return user;
+    // Додаємо роль користувача до об'єкта user
+    const role = await this.usersService.getUserCurrentRole(user.id);
+    return { ...user, role };
   }
 }

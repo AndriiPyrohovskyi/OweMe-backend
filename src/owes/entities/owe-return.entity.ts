@@ -1,4 +1,4 @@
-import { OweStatus } from 'src/common/enums';
+import { ReturnStatus } from 'src/common/enums';
 import {Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn, Index} from 'typeorm';
 import { OweParticipant } from './owe-partipicipant.entity';
 
@@ -18,11 +18,8 @@ export class OweReturn {
     @UpdateDateColumn()
     updatedAt: Date
 
-    @Column({ nullable: true })
-    finishedAt: Date
-
-    @Column({ enum: OweStatus, default: OweStatus.Opened })
-    status: OweStatus;
+    @Column({ enum: ReturnStatus, default: ReturnStatus.Opened })
+    status: ReturnStatus
 
     @ManyToOne(() => OweParticipant, oweParticipant => oweParticipant.oweReturns, { onDelete: 'CASCADE' })
     participant: OweParticipant
