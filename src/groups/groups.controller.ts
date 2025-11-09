@@ -8,7 +8,10 @@ import { Roles, CurrentUser, TargetUserField } from 'src/common/decorators';
 import { GroupsUserRole, UserRole } from 'src/common/enums';
 import { User } from 'src/users/entities/user.entity';
 import { CreateGroupDto } from './dto/create-group.dto';
+import { UpdateGroupDto } from './dto/update-group.dto';
+import { ChangeRoleDto } from './dto/change-role.dto';
 import { Group } from './entities/group.entity';
+import { GroupMember } from './entities/group-member.entity';
 import { RequestToGroup } from './entities/request-to-group.entity';
 import { RequestFromGroup } from './entities/request-from-group.entity';
 
@@ -26,6 +29,14 @@ export class GroupsController {
   }
 
   // ---------------------------------- Get -------------------------------------
+  @Get('search')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Пошук груп за назвою або описом' })
+  @ApiResponse({ status: 200, description: 'Список знайдених груп', type: [Group] })
+  async searchGroups(@Query('query') query: string): Promise<Group[]> {
+    return this.groupsService.searchGroups(query);
+  }
+
   @Get('my-groups')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Отримати мої групи' })
@@ -52,6 +63,16 @@ export class GroupsController {
   @ApiResponse({ status: 404, description: 'Група не знайдена' })
   async getGroupById(@Param('groupId') groupId: number): Promise<Group> {
     return this.groupsService.getGroupById(groupId);
+  }
+
+  @Get(':groupId/members')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Отримати учасників групи' })
+  @ApiParam({ name: 'groupId', description: 'ID групи' })
+  @ApiResponse({ status: 200, description: 'Список учасників групи', type: [GroupMember] })
+  @ApiResponse({ status: 404, description: 'Група не знайдена' })
+  async getGroupMembers(@Param('groupId') groupId: number): Promise<GroupMember[]> {
+    return this.groupsService.getGroupMembers(groupId);
   }
 
   @Get(':groupId/requests/to')
@@ -135,6 +156,38 @@ export class GroupsController {
   // ---------------------------------- Post ------------------------------------
 
   // ---------------------------------- Put -------------------------------------
+  @Put(':groupId')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Оновити інформацію про групу' })
+  @ApiParam({ name: 'groupId', description: 'ID групи' })
+  @ApiBody({ type: UpdateGroupDto })
+  @ApiResponse({ status: 200, description: 'Група оновлена', type: Group })
+  @ApiResponse({ status: 403, description: 'Тільки адміністратори можуть оновлювати групу' })
+  async updateGroup(
+    @CurrentUser() currentUser: User,
+    @Param('groupId') groupId: number,
+    @Body() updateGroupDto: UpdateGroupDto
+  ): Promise<Group> {
+    return this.groupsService.updateGroup(currentUser.id, groupId, updateGroupDto);
+  }
+
+  @Put(':groupId/member/:userId/role')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Змінити роль учасника групи' })
+  @ApiParam({ name: 'groupId', description: 'ID групи' })
+  @ApiParam({ name: 'userId', description: 'ID користувача' })
+  @ApiBody({ type: ChangeRoleDto })
+  @ApiResponse({ status: 200, description: 'Роль змінено' })
+  @ApiResponse({ status: 403, description: 'Недостатньо прав' })
+  async changeMemberRole(
+    @CurrentUser() currentUser: User,
+    @Param('groupId') groupId: number,
+    @Param('userId') userId: number,
+    @Body() changeRoleDto: ChangeRoleDto
+  ): Promise<void> {
+    return this.groupsService.changeMemberRole(currentUser.id, groupId, userId, changeRoleDto.newRole);
+  }
+
   @Put('request/to/:requestId/accept')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Прийняти запит на вступ до групи' })

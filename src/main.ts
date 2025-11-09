@@ -8,7 +8,6 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe());
   
-  // Swagger configuration
   const config = new DocumentBuilder()
     .setTitle('OweMe API')
     .setDescription('API для управління боргами, групами та друзями')
@@ -24,7 +23,7 @@ async function bootstrap() {
   SwaggerModule.setup('api', app, document);
   
   const port = process.env.PORT ?? 3000; 
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0'); // Listen on all network interfaces
   console.log(`Api running at http://localhost:${port}/`);
   console.log(`Swagger documentation at http://localhost:${port}/api`);
 }

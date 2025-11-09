@@ -74,6 +74,24 @@ export class UsersService {
   }
   // ---------------------------------- Delete Methods -------------------------------------
 
+  // ---------------------------------- Ban Methods -------------------------------------
+  async banUser(userId: number, reason?: string): Promise<User> {
+    const user = await this.getUserById(userId);
+    user.isBanned = true;
+    user.banReason = reason || 'No reason provided';
+    user.bannedAt = new Date();
+    return await this.usersRepository.save(user);
+  }
+
+  async unbanUser(userId: number): Promise<User> {
+    const user = await this.getUserById(userId);
+    user.isBanned = false;
+    user.banReason = undefined;
+    user.bannedAt = undefined;
+    return await this.usersRepository.save(user);
+  }
+  // ---------------------------------- Ban Methods -------------------------------------
+
   // ---------------------------------- Get Methods -------------------------------------
   async getUserCurrentRole(userId: number): Promise<UserRole> {
     const currentUser = await this.getUserById(userId);

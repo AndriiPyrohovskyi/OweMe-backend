@@ -21,6 +21,9 @@ export class OweReturn {
     @Column({ enum: ReturnStatus, default: ReturnStatus.Opened })
     status: ReturnStatus
 
+    @Column({ nullable: true })
+    holdTransactionId: number // ID транзакції заморожених коштів
+
     @ManyToOne(() => OweParticipant, oweParticipant => oweParticipant.oweReturns, { onDelete: 'CASCADE' })
     participant: OweParticipant
 }

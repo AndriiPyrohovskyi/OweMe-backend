@@ -16,8 +16,9 @@ export const FRIEND_REQUEST_ROLE_KEY = 'friendRequestRole';
 export const FriendRequestRole = (role: 'sender' | 'receiver' | 'both') => SetMetadata(FRIEND_REQUEST_ROLE_KEY, role);
 
 export const CurrentUser = createParamDecorator(
-  (data: unknown, ctx: ExecutionContext) => {
+  (data: string, ctx: ExecutionContext) => {
     const request = ctx.switchToHttp().getRequest();
-    return request.user;
+    const user = request.user;
+    return data ? user?.[data] : user;
   },
 );

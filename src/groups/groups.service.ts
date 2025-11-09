@@ -1,6 +1,7 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Group } from './entities/group.entity';
 import { CreateGroupDto } from './dto/create-group.dto';
+import { UpdateGroupDto } from './dto/update-group.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { RequestFromGroup } from './entities/request-from-group.entity';
@@ -97,11 +98,10 @@ export class GroupsService {
   }
 
   async sendJoinRequestFromGroup(senderId: number, groupId: number, receiverId: number) : Promise<RequestFromGroup> {
+    // Перевіряємо чи користувач є членом групи (будь-яка роль)
     const sender = await this.getGroupMemberByGroupAndUser(groupId, senderId);
     
-    if (sender.role === GroupsUserRole.Member) {
-      throw new ForbiddenException('Only admins can send join requests from group!');
-    }
+    // Видалено перевірку на роль - тепер всі члени групи можуть запрошувати
 
     const receiver = await this.requestFromGroupRepository.manager.findOne(User, {where: {id: receiverId}});
     if (!receiver) {
@@ -371,6 +371,76 @@ export class GroupsService {
     }
   }
   // ---------------------------------- Update Methods -------------------------------------
+  async updateGroup(userId: number, groupId: number, updateGroupDto: UpdateGroupDto): Promise<Group> {
+    const group = await this.getGroupById(groupId);
+    const groupMember = await this.getGroupMemberByGroupAndUser(groupId, userId);
+
+    // Тільки адміністратори і вище можуть оновлювати групу
+    if (groupMember.role === GroupsUserRole.Member) {
+      throw new ForbiddenException('Only admins can update group information!');
+    }
+
+    // Оновлюємо тільки передані поля
+    if (updateGroupDto.name !== undefined) {
+      group.name = updateGroupDto.name;
+    }
+    if (updateGroupDto.description !== undefined) {
+      group.description = updateGroupDto.description;
+    }
+    if (updateGroupDto.avatarUrl !== undefined) {
+      group.avatarUrl = updateGroupDto.avatarUrl;
+    }
+
+    return await this.groupRepository.save(group);
+  }
+
+  async changeMemberRole(
+    requesterId: number,
+    groupId: number,
+    targetUserId: number,
+    newRole: GroupsUserRole
+  ): Promise<void> {
+    const requester = await this.getGroupMemberByGroupAndUser(groupId, requesterId);
+    const targetMember = await this.getGroupMemberByGroupAndUser(groupId, targetUserId);
+
+    // Founder не може бути змінений
+    if (targetMember.role === GroupsUserRole.Founder) {
+      throw new ForbiddenException('Cannot change founder role!');
+    }
+
+    // Не можна призначити Founder
+    if (newRole === GroupsUserRole.Founder) {
+      throw new ForbiddenException('Cannot assign founder role!');
+    }
+
+    // Тільки адміністратори можуть змінювати ролі
+    if (requester.role === GroupsUserRole.Member) {
+      throw new ForbiddenException('Only admins can change member roles!');
+    }
+
+    // Адміністратор не може змінювати роль іншого адміністратора (тільки Founder/Owner може)
+    if (
+      requester.role === GroupsUserRole.Admin &&
+      (targetMember.role === GroupsUserRole.Admin || targetMember.role === GroupsUserRole.Owner)
+    ) {
+      throw new ForbiddenException('Admin cannot change role of other admins or owners!');
+    }
+
+    const oldRole = targetMember.role;
+    targetMember.role = newRole;
+    await this.groupMemberRepository.save(targetMember);
+
+    // Логування зміни ролі
+    const roleLog = this.groupRolesLogRepository.create({
+      group: targetMember.group,
+      actor: requester,
+      target: targetMember,
+      newRole: newRole,
+    });
+    await this.groupRolesLogRepository.save(roleLog);
+  }
+  // ---------------------------------- Update Methods -------------------------------------
+  // ---------------------------------- Update Methods -------------------------------------
   // ---------------------------------- Delete Methods -------------------------------------
   async deleteGroup(id: number) {
     const group = await this.getGroupById(id);
@@ -407,12 +477,44 @@ export class GroupsService {
       .getMany();
   }
 
+  async searchGroups(query: string): Promise<Group[]> {
+    if (!query || query.trim() === '') {
+      return [];
+    }
+
+    return this.groupRepository
+      .createQueryBuilder('group')
+      .where('LOWER(group.name) LIKE LOWER(:query)', { query: `%${query}%` })
+      .orWhere('LOWER(group.description) LIKE LOWER(:query)', { query: `%${query}%` })
+      .leftJoinAndSelect('group.members', 'members')
+      .leftJoinAndSelect('members.user', 'user')
+      .orderBy('group.name', 'ASC')
+      .limit(50) // Обмежуємо результати
+      .getMany();
+  }
+
   async getGroupById(groupId: number) : Promise<Group> {
     const group = await this.groupRepository.findOne({where: {id: groupId}});
     if (!group) {
       throw new NotFoundException("Group not found!");
     }
     return group;
+  }
+
+  async getGroupMembers(groupId: number): Promise<GroupMember[]> {
+    const group = await this.groupRepository.findOne({ where: { id: groupId } });
+    if (!group) {
+      throw new NotFoundException("Group not found!");
+    }
+
+    return await this.groupMemberRepository.find({
+      where: { group: { id: groupId } },
+      relations: ['user', 'group'],
+      order: {
+        role: 'ASC', // Founder/Owner/Admin/Member
+        joinedAt: 'ASC',
+      },
+    });
   }
 
   async getGroupMemberByGroupAndUser(groupId: number, userId: number) : Promise<GroupMember> {
@@ -459,7 +561,7 @@ export class GroupsService {
   async getRequestsToGroupByGroupId(id: number) : Promise<RequestToGroup[]> {
     const requestToGroup = await this.requestToGroupRepository.find({
       where: {group: {id: id}},
-      relations: ['sender', 'group', 'actor'],
+      relations: ['sender', 'group', 'actor', 'actor.user', 'actor.group'],
     });
     if (!requestToGroup) {
       throw new NotFoundException("Request to group not found!");
@@ -492,7 +594,7 @@ export class GroupsService {
   async getRequestsFromGroupByGroupId(id: number) : Promise<RequestFromGroup[]> {
     const requestFromGroup = await this.requestFromGroupRepository.find({
       where: {sender: {group: {id: id}}},
-      relations: ['sender', 'sender.group', 'receiver', 'canceledBy'],
+      relations: ['sender', 'sender.user', 'sender.group', 'receiver', 'canceledBy', 'canceledBy.user'],
     });
     if (!requestFromGroup) {
       throw new NotFoundException("Request from group not found!");

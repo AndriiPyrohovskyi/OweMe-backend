@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from 'src/users/users.service';
+import { WalletService } from '../wallet/wallet.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
@@ -9,6 +10,7 @@ export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
+    private readonly walletService: WalletService,
   ) {}
 
   private async hashPassword(password: string): Promise<string> {
@@ -48,6 +50,15 @@ export class AuthService {
     let { password, ...data } = registerDto;
     password = await this.hashPassword(password);
     const user = await this.usersService.createUser({ ...data, password });
+    
+    // Автоматично створюємо wallet для нового користувача
+    try {
+      await this.walletService.createWallet(user);
+    } catch (error) {
+      console.error('Failed to create wallet for new user:', error);
+      // Wallet creation failed, but user is created. Can retry later.
+    }
+    
     const { passwordHash: _, ...result } = user;
     return result;
   }

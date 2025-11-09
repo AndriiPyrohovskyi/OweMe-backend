@@ -288,8 +288,8 @@ export class OwesController {
   @ApiResponse({ status: 201, description: 'Повернення успішно створене', type: OweReturn })
   @ApiResponse({ status: 400, description: 'Невірні дані' })
   @ApiResponse({ status: 403, description: 'Недостатньо прав' })
-  async createOweReturn(@Body() returnOweDto: ReturnOweDto): Promise<OweReturn> {
-    return this.owesService.createOweReturn(returnOweDto);
+  async createOweReturn(@Body() returnOweDto: ReturnOweDto, @CurrentUser() currentUser: User): Promise<OweReturn> {
+    return this.owesService.createOweReturn(returnOweDto, currentUser.id);
   }
 
   // ---------------------------------- Post ------------------------------------

@@ -34,6 +34,15 @@ export class User {
     @Column({ nullable: true, length: 500 })
     description: string;
 
+    @Column({ default: false })
+    isBanned: boolean;
+
+    @Column({ nullable: true, length: 500, type: 'varchar' })
+    banReason?: string;
+
+    @Column({ nullable: true, type: 'timestamp' })
+    bannedAt?: Date;
+
     @CreateDateColumn()
     createdAt: Date;
 

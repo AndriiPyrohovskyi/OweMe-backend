@@ -81,6 +81,22 @@ export class UsersController {
     await this.usersService.giveNewRole(actionedUser.id, actionerUser.id, body.newRole);
     return {message: `${body.actionedUsername}'s role successfully changed to ${body.newRole} by ${body.actionerUsername}`}
   }
+
+  @Post('banUser')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Admin)
+  async banUser(@Body() body: { userId: number; reason?: string }): Promise<object> {
+    const user = await this.usersService.banUser(body.userId, body.reason);
+    return { message: `User ${user.username} has been banned` };
+  }
+
+  @Post('unbanUser')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Admin)
+  async unbanUser(@Body() body: { userId: number }): Promise<object> {
+    const user = await this.usersService.unbanUser(body.userId);
+    return { message: `User ${user.username} has been unbanned` };
+  }
   // ---------------------------------- Post -------------------------------------
 
   // ---------------------------------- Put -------------------------------------

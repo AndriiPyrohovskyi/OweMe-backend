@@ -6,7 +6,7 @@ const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOptions =
     type: 'postgres',
     url: configService.get<string>('DB_CONNECTION_STRING'),
     entities: ['dist/**/*.entity{.ts,.js}'],
-    synchronize: configService.get<string>('NODE_ENV') !== 'production',
+    synchronize: true, // Увімкнули для створення таблиць
     logging: configService.get<string>('NODE_ENV') === 'development',
     ssl: configService.get<string>('NODE_ENV') === 'production' ? {
         rejectUnauthorized: false
