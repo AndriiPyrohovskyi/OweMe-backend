@@ -511,10 +511,41 @@ export class GroupsService {
       where: { group: { id: groupId } },
       relations: ['user', 'group'],
       order: {
-        role: 'ASC', // Founder/Owner/Admin/Member
+        role: 'ASC',
         joinedAt: 'ASC',
       },
     });
+  }
+
+  async getGroupOwes(groupId: number) {
+    const group = await this.groupRepository.findOne({ where: { id: groupId } });
+    if (!group) {
+      throw new NotFoundException("Group not found!");
+    }
+
+    const owes = await this.groupMemberRepository
+      .createQueryBuilder('gm')
+      .innerJoin('gm.user', 'user')
+      .leftJoin('OweParticipant', 'op', '"op"."toUserId" = "user"."id"')
+      .leftJoin('OweItem', 'oi', '"oi"."id" = "op"."oweItemId"')
+      .leftJoin('FullOwe', 'fo', '"fo"."id" = "oi"."fullOweId" AND "fo"."groupId" = :groupId', { groupId })
+      .leftJoin('User', 'fromUser', '"fromUser"."id" = "fo"."fromUserId"')
+      .where('"gm"."groupId" = :groupId', { groupId })
+      .andWhere('"op"."status" != :status', { status: 'Closed' })
+      .select([
+        '"fromUser"."id" AS "fromUserId"',
+        '"fromUser"."name" AS "fromUserName"',
+        '"fromUser"."avatarUrl" AS "fromUserAvatar"',
+        '"user"."id" AS "toUserId"',
+        '"user"."name" AS "toUserName"',
+        '"user"."avatarUrl" AS "toUserAvatar"',
+        'COALESCE(SUM("op"."sum"), 0) AS "totalDebt"',
+      ])
+      .groupBy('"fromUser"."id", "fromUser"."name", "fromUser"."avatarUrl", "user"."id", "user"."name", "user"."avatarUrl"')
+      .having('COALESCE(SUM("op"."sum"), 0) > 0')
+      .getRawMany();
+
+    return owes;
   }
 
   async getGroupMemberByGroupAndUser(groupId: number, userId: number) : Promise<GroupMember> {

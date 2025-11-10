@@ -60,7 +60,7 @@ export class OwesService {
       const oweItem = this.oweItemRepository.create({
         name: itemDto.name,
         description: itemDto.description,
-        imageUrl: itemDto.imageUrl,
+        imageUrls: itemDto.imageUrls || [],
         fullOwe: savedFullOwe,
       });
 
@@ -94,7 +94,7 @@ export class OwesService {
     const oweItem = this.oweItemRepository.create({
       name: itemDto.name,
       description: itemDto.description,
-      imageUrl: itemDto.imageUrl,
+      imageUrls: itemDto.imageUrls || [],
       fullOwe,
     });
 
@@ -114,7 +114,7 @@ export class OwesService {
 
     const participant = await this.oweParticipantRepository.findOne({
       where: { id: participantId },
-      relations: ['oweReturns', 'oweItem', 'oweItem.fullOwe', 'toUser', 'group']
+      relations: ['oweReturns', 'oweItem', 'oweItem.fullOwe', 'toUser', 'group', 'group.members', 'group.members.user']
     });
 
     if (!participant) {
@@ -124,6 +124,22 @@ export class OwesService {
     // Перевіряємо, чи статус учасника Accepted
     if (participant.status !== OweStatus.Accepted) {
       throw new BadRequestException('Can only create returns for accepted debts');
+    }
+
+    // Перевіряємо, чи користувач є боржником
+    if (participant.toUser) {
+      // Індивідуальний борг - перевіряємо toUser
+      if (participant.toUser.id !== userId) {
+        throw new BadRequestException('Only the debtor can create a return');
+      }
+    } else if (participant.group) {
+      // Груповий борг - перевіряємо чи користувач є членом групи
+      const isMember = participant.group.members.some(member => member.user.id === userId);
+      if (!isMember) {
+        throw new BadRequestException('Only group members can create returns for group debts');
+      }
+    } else {
+      throw new BadRequestException('Participant must have either toUser or group');
     }
 
     // Враховуємо як прийняті (Accepted), так і відкриті (Opened) returns
@@ -348,6 +364,23 @@ export class OwesService {
       throw new BadRequestException('Either toUserId or groupId must be provided');
     }
 
+    // Завантажуємо fullOwe щоб перевірити fromUser
+    const fullOweWithUser = await this.oweItemRepository.findOne({
+      where: { id: oweItem.id },
+      relations: ['fullOwe', 'fullOwe.fromUser'],
+    });
+
+    if (!fullOweWithUser) {
+      throw new NotFoundException('OweItem not found');
+    }
+
+    const fromUserId = fullOweWithUser.fullOwe.fromUser.id;
+
+    // Перевіряємо що користувач не створює борг сам собі
+    if (toUserId && fromUserId === toUserId) {
+      throw new BadRequestException('Cannot create debt to yourself');
+    }
+
     const participant = this.oweParticipantRepository.create({
       sum,
       oweItem,
@@ -359,17 +392,39 @@ export class OwesService {
     }
 
     if (groupId) {
-      participant.group = await this.validateGroupExists(groupId);
+      const group = await this.validateGroupExists(groupId);
+      
+      // Перевіряємо чи fromUser не є членом групи (щоб не створити борг собі через групу)
+      const groupWithMembers = await this.oweParticipantRepository.manager.findOne(Group, {
+        where: { id: groupId },
+        relations: ['members', 'members.user'],
+      });
+      
+      if (groupWithMembers) {
+        const isMember = groupWithMembers.members.some(member => member.user.id === fromUserId);
+        if (isMember) {
+          throw new BadRequestException('Cannot create group debt when you are a member of the group');
+        }
+      }
+      
+      participant.group = group;
     }
 
     return participant;
   }
   private async validateUserExists(userId: number): Promise<User> {
-    const user = { id: userId } as User;
+    // Fetch full User entity to ensure we populate username and other fields
+    const user = await this.oweParticipantRepository.manager.findOne(User, { where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User with id ${userId} not found`);
+    }
     return user;
   }
   private async validateGroupExists(groupId: number): Promise<Group> {
-    const group = { id: groupId } as Group;
+    const group = await this.oweParticipantRepository.manager.findOne(Group, { where: { id: groupId } });
+    if (!group) {
+      throw new NotFoundException(`Group with id ${groupId} not found`);
+    }
     return group;
   }
 
@@ -425,7 +480,7 @@ export class OwesService {
   async acceptOweParticipant(participantId: number, userId: number): Promise<OweParticipant> {
     const participant = await this.oweParticipantRepository.findOne({
       where: { id: participantId },
-      relations: ['oweItem', 'oweItem.fullOwe', 'oweItem.fullOwe.fromUser', 'toUser'],
+      relations: ['oweItem', 'oweItem.fullOwe', 'oweItem.fullOwe.fromUser', 'toUser', 'group', 'group.members', 'group.members.user'],
     });
 
     if (!participant) {
@@ -436,8 +491,20 @@ export class OwesService {
       throw new BadRequestException('Only opened participants can be accepted');
     }
 
-    if (participant.toUser && participant.toUser.id !== userId) {
-      throw new BadRequestException('Only the participant can accept the debt');
+    // Перевірка для індивідуального боргу
+    if (participant.toUser) {
+      if (participant.toUser.id !== userId) {
+        throw new BadRequestException('Only the participant can accept the debt');
+      }
+    } 
+    // Перевірка для групового боргу
+    else if (participant.group) {
+      const isMember = participant.group.members.some(member => member.user.id === userId);
+      if (!isMember) {
+        throw new BadRequestException('Only group members can accept group debts');
+      }
+    } else {
+      throw new BadRequestException('Participant must have either toUser or group');
     }
 
     participant.status = OweStatus.Accepted;
@@ -447,7 +514,7 @@ export class OwesService {
   async declineOweParticipant(participantId: number, userId: number): Promise<OweParticipant> {
     const participant = await this.oweParticipantRepository.findOne({
       where: { id: participantId },
-      relations: ['oweItem', 'oweItem.fullOwe', 'oweItem.fullOwe.fromUser', 'toUser'],
+      relations: ['oweItem', 'oweItem.fullOwe', 'oweItem.fullOwe.fromUser', 'toUser', 'group', 'group.members', 'group.members.user'],
     });
 
     if (!participant) {
@@ -458,8 +525,20 @@ export class OwesService {
       throw new BadRequestException('Only opened participants can be declined');
     }
 
-    if (participant.toUser && participant.toUser.id !== userId) {
-      throw new BadRequestException('Only the participant can decline the debt');
+    // Перевірка для індивідуального боргу
+    if (participant.toUser) {
+      if (participant.toUser.id !== userId) {
+        throw new BadRequestException('Only the participant can decline the debt');
+      }
+    } 
+    // Перевірка для групового боргу
+    else if (participant.group) {
+      const isMember = participant.group.members.some(member => member.user.id === userId);
+      if (!isMember) {
+        throw new BadRequestException('Only group members can decline group debts');
+      }
+    } else {
+      throw new BadRequestException('Participant must have either toUser or group');
     }
 
     participant.status = OweStatus.Declined;
@@ -886,6 +965,7 @@ export class OwesService {
   }
   // Returns які МНЕ НАДІСЛАЛИ (я - fromUser, власник боргу)
   // Це returns для погашення МОЇХ боргів, які я можу прийняти/відхилити
+  // IN = отримані returns (хтось повертає мені борг)
   async getAllInOweReturnsByUser(id: number) : Promise<OweReturn[]>{
     const queryBuilder = this.oweReturnRepository.createQueryBuilder('oweReturn');
     return await queryBuilder
@@ -896,12 +976,13 @@ export class OwesService {
       .leftJoinAndSelect('participant.toUser', 'toUser')
       .leftJoinAndSelect('participant.group', 'group')
       .where('fromUser.id = :id', { id })
-      .andWhere('toUser.id != :id', { id })
+      .andWhere('(toUser.id != :id OR toUser.id IS NULL)', { id })
       .getMany();
   }
   
   // Returns які Я СТВОРИВ (я - toUser, боржник)
   // Це returns для погашення ЧУЖИХ боргів, які я можу скасувати
+  // OUT = відправлені returns (я повертаю комусь борг)
   async getAllOutOweReturnsByUser(id: number) : Promise<OweReturn[]>{
     const queryBuilder = this.oweReturnRepository.createQueryBuilder('oweReturn');
 
@@ -976,4 +1057,39 @@ export class OwesService {
       .getMany();
   }
   // ---------------------------------- Get Methods ----------------------------------------
+
+  // ---------------------------------- Image Upload Methods -------------------------------
+  
+  async getOweItemById(oweItemId: number): Promise<OweItem> {
+    const oweItem = await this.oweItemRepository.findOne({
+      where: { id: oweItemId },
+      relations: ['fullOwe', 'fullOwe.fromUser', 'oweParticipants', 'oweParticipants.toUser', 'oweParticipants.group'],
+    });
+
+    if (!oweItem) {
+      throw new NotFoundException(`OweItem with ID ${oweItemId} not found`);
+    }
+
+    return oweItem;
+  }
+
+  async userHasAccessToOweItem(userId: number, oweItemId: number): Promise<boolean> {
+    const oweItem = await this.getOweItemById(oweItemId);
+
+    // Перевіряємо чи користувач є автором боргу
+    if (oweItem.fullOwe.fromUser.id === userId) {
+      return true;
+    }
+
+    // Перевіряємо чи користувач є учасником боргу
+    const isParticipant = oweItem.oweParticipants.some(
+      participant => participant.toUser?.id === userId
+    );
+
+    return isParticipant;
+  }
+
+  async updateOweItemImages(oweItemId: number, imageUrls: string[]): Promise<void> {
+    await this.oweItemRepository.update(oweItemId, { imageUrls });
+  }
 }

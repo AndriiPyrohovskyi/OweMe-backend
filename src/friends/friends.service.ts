@@ -282,20 +282,41 @@ export class FriendsService {
   }
 
   async getAllUserFriends(id: number): Promise<User[]> {
-    const friendships = await this.friendshipRequestRepository.find({
-      where: [
-        { sender: { id }, requestStatus: RequestStatus.Accepted },
-        { receiver: { id }, requestStatus: RequestStatus.Accepted },
-      ],
-      relations: ['sender', 'receiver'],
+    // Get friendships where user is the sender - return receiver IDs
+    const friendshipsAsSender = await this.friendshipRequestRepository
+      .createQueryBuilder('friendship')
+      .select('friendship.receiverId', 'friendId')
+      .where('friendship.requestStatus = :status', { status: RequestStatus.Accepted })
+      .andWhere('friendship.senderId = :id', { id })
+      .getRawMany();
+
+    // Get friendships where user is the receiver - return sender IDs  
+    const friendshipsAsReceiver = await this.friendshipRequestRepository
+      .createQueryBuilder('friendship')
+      .select('friendship.senderId', 'friendId')
+      .where('friendship.requestStatus = :status', { status: RequestStatus.Accepted })
+      .andWhere('friendship.receiverId = :id', { id })
+      .getRawMany();
+
+    // Collect all friend IDs
+    const friendIds = [
+      ...friendshipsAsSender.map(f => f.friendId),
+      ...friendshipsAsReceiver.map(f => f.friendId),
+    ].filter((friendId, index, self) => 
+      friendId && friendId !== id && self.indexOf(friendId) === index // Deduplicate and exclude self
+    );
+
+    // If no friends, return empty array
+    if (friendIds.length === 0) {
+      return [];
+    }
+
+    // Load actual User entities by IDs
+    const friends = await this.friendshipRequestRepository.manager.find(User, {
+      where: friendIds.map(friendId => ({ id: friendId })),
     });
 
-    const friends = friendships.map(friendship => {
-      const { sender, receiver } = friendship;
-      return sender.id === id ? receiver : sender;
-    });
-
-    return Array.from(new Map(friends.map(friend => [friend.id, friend])).values());
+    return friends;
   }
 
   async getAllCommonUsersFriends(id1: number, id2: number): Promise<User[]> {
@@ -382,6 +403,11 @@ export class FriendsService {
   }
 
   async checkIfUsersAreFriends(id1: number, id2: number): Promise<boolean> {
+    // Users cannot be friends with themselves
+    if (id1 === id2) {
+      return false;
+    }
+
     const friendship = await this.friendshipRequestRepository.findOne({
       where: [
         { sender: { id: id1 }, receiver: { id: id2 }, requestStatus: RequestStatus.Accepted },
@@ -393,17 +419,24 @@ export class FriendsService {
   }
 
   async getFriendCount(userId: number): Promise<number> {
-    const count = await this.friendshipRequestRepository.count({
-      where: [
-        { sender: { id: userId }, requestStatus: RequestStatus.Accepted },
-        { receiver: { id: userId }, requestStatus: RequestStatus.Accepted },
-      ],
-    });
+    const count = await this.friendshipRequestRepository
+      .createQueryBuilder('friendship')
+      .leftJoin('friendship.sender', 'sender')
+      .leftJoin('friendship.receiver', 'receiver')
+      .where('friendship.requestStatus = :status', { status: RequestStatus.Accepted })
+      .andWhere('(sender.id = :userId OR receiver.id = :userId)', { userId })
+      .andWhere('sender.id != receiver.id') // Exclude self-friendships
+      .getCount();
 
     return count;
   }
 
   async checkIfFriendRequestExists(userId1: number, userId2: number): Promise<boolean> {
+    // Self-requests should not exist
+    if (userId1 === userId2) {
+      return false;
+    }
+
     const friendRequest = await this.friendshipRequestRepository.findOne({
       where: [
         { sender: { id: userId1 }, receiver: { id: userId2 } },

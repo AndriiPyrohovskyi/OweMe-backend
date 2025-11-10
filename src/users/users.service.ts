@@ -1,8 +1,8 @@
-import { ConflictException, Injectable, NotFoundException, UseGuards } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException, UseGuards } from '@nestjs/common';
 import { User } from './entities/user.entity';
 import { RegisterDto } from 'src/auth/dto/register.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Like, Repository } from 'typeorm'
+import { DataSource, Like, Repository } from 'typeorm'
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserChangeLog } from './entities/user-change-log.entity';
 import { UserRole } from 'src/common/enums';
@@ -16,6 +16,8 @@ export class UsersService {
 
     @InjectRepository(UserChangeLog)
     private readonly usersLogRepository: Repository<UserChangeLog>,
+
+    private readonly dataSource: DataSource,
   ) {}
 
   // ---------------------------------- Create Methods -------------------------------------
@@ -75,7 +77,11 @@ export class UsersService {
   // ---------------------------------- Delete Methods -------------------------------------
 
   // ---------------------------------- Ban Methods -------------------------------------
-  async banUser(userId: number, reason?: string): Promise<User> {
+  async banUser(adminId: number, userId: number, reason?: string): Promise<User> {
+    if (adminId === userId) {
+      throw new BadRequestException('You cannot ban yourself');
+    }
+    
     const user = await this.getUserById(userId);
     user.isBanned = true;
     user.banReason = reason || 'No reason provided';
@@ -88,6 +94,14 @@ export class UsersService {
     user.isBanned = false;
     user.banReason = undefined;
     user.bannedAt = undefined;
+    return await this.usersRepository.save(user);
+  }
+
+  async resetFields(userId: number): Promise<User> {
+    const user = await this.getUserById(userId);
+    user.firstName = 'User';
+    user.lastName = '';
+    user.description = '';
     return await this.usersRepository.save(user);
   }
   // ---------------------------------- Ban Methods -------------------------------------
@@ -187,6 +201,82 @@ export class UsersService {
 
   async getAll(): Promise<GetPublicUserDto[]> {
     return await this.usersRepository.find();
+  }
+
+  async getAdminStats(userId: number) {
+    const friendsCountQuery = await this.dataSource.query(
+      `SELECT COUNT(DISTINCT CASE 
+        WHEN "senderId" = $1 THEN "receiverId"
+        WHEN "receiverId" = $1 THEN "senderId"
+      END) as count
+      FROM "FriendshipRequest"
+      WHERE ("senderId" = $1 OR "receiverId" = $1) AND "requestStatus" = 'Accepted'`,
+      [userId],
+    );
+    const totalFriends = parseInt(friendsCountQuery[0]?.count || '0');
+
+    const groupsCountQuery = await this.dataSource.query(
+      `SELECT COUNT(*) as count FROM "GroupMember" WHERE "userId" = $1`,
+      [userId],
+    );
+    const totalGroups = parseInt(groupsCountQuery[0]?.count || '0');
+
+    const sentOwesQuery = await this.dataSource.query(
+      `SELECT COUNT(*) as count FROM "FullOwe" WHERE "fromUserId" = $1`,
+      [userId],
+    );
+    const sentOwes = parseInt(sentOwesQuery[0]?.count || '0');
+
+    const receivedOwesQuery = await this.dataSource.query(
+      `SELECT COUNT(*) as count FROM "OweParticipant" WHERE "toUserId" = $1`,
+      [userId],
+    );
+    const receivedOwes = parseInt(receivedOwesQuery[0]?.count || '0');
+
+    const totalDebtQuery = await this.dataSource.query(
+      `SELECT COALESCE(SUM(op.sum), 0) as total
+      FROM "OweParticipant" op
+      INNER JOIN "OweItem" oi ON op."oweItemId" = oi.id
+      INNER JOIN "FullOwe" fo ON oi."fullOweId" = fo.id
+      WHERE op."toUserId" = $1 AND op.status != 'Closed'`,
+      [userId],
+    );
+    const totalDebt = parseFloat(totalDebtQuery[0]?.total || '0');
+
+    const totalLentQuery = await this.dataSource.query(
+      `SELECT COALESCE(SUM(op.sum), 0) as total
+      FROM "OweParticipant" op
+      INNER JOIN "OweItem" oi ON op."oweItemId" = oi.id
+      INNER JOIN "FullOwe" fo ON oi."fullOweId" = fo.id
+      WHERE fo."fromUserId" = $1 AND op.status != 'Closed'`,
+      [userId],
+    );
+    const totalLent = parseFloat(totalLentQuery[0]?.total || '0');
+
+    const user = await this.getUserById(userId);
+
+    return {
+      userId: user.id,
+      username: user.username,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      avatarUrl: user.avatarUrl,
+      description: user.description,
+      isBanned: user.isBanned,
+      banReason: user.banReason,
+      bannedAt: user.bannedAt,
+      createdAt: user.createdAt,
+      role: await this.getUserCurrentRole(userId),
+      stats: {
+        totalFriends,
+        totalGroups,
+        sentOwes,
+        receivedOwes,
+        totalDebt,
+        totalLent,
+      },
+    };
   }
   // ---------------------------------- Get Methods -------------------------------------
   

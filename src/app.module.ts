@@ -11,6 +11,7 @@ import { UsersModule } from './users/users.module';
 import { WalletModule } from './wallet/wallet.module';
 import { StatisticsModule } from './statistics/statistics.module';
 import { AchievementsModule } from './achievements/achievements.module';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
   imports: [
@@ -26,7 +27,8 @@ import { AchievementsModule } from './achievements/achievements.module';
     UsersModule,
     WalletModule,
     StatisticsModule,
-    AchievementsModule
+    AchievementsModule,
+    UploadModule
   ],
   controllers: [AppController],
   providers: [AppService],

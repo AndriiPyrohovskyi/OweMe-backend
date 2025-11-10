@@ -69,6 +69,13 @@ export class UsersController {
   async getFullUserByUsername(@Query('username') username: string): Promise<GetPublicUserDto> {
     return this.usersService.getFullUserByUsername(username);
   }
+
+  @Get(':id/admin-stats')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Admin)
+  async getAdminStats(@Param('id') userId: string) {
+    return this.usersService.getAdminStats(parseInt(userId));
+  }
   // ---------------------------------- Get -------------------------------------
 
   // ---------------------------------- Post -------------------------------------
@@ -85,8 +92,8 @@ export class UsersController {
   @Post('banUser')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Admin)
-  async banUser(@Body() body: { userId: number; reason?: string }): Promise<object> {
-    const user = await this.usersService.banUser(body.userId, body.reason);
+  async banUser(@CurrentUser() currentUser: User, @Body() body: { userId: number; reason?: string }): Promise<object> {
+    const user = await this.usersService.banUser(currentUser.id, body.userId, body.reason);
     return { message: `User ${user.username} has been banned` };
   }
 
@@ -96,6 +103,14 @@ export class UsersController {
   async unbanUser(@Body() body: { userId: number }): Promise<object> {
     const user = await this.usersService.unbanUser(body.userId);
     return { message: `User ${user.username} has been unbanned` };
+  }
+
+  @Post(':id/reset-fields')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Admin)
+  async resetFields(@Param('id') userId: string): Promise<object> {
+    await this.usersService.resetFields(parseInt(userId));
+    return { message: 'User fields have been reset to defaults' };
   }
   // ---------------------------------- Post -------------------------------------
 

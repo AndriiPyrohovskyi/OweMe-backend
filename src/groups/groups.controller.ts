@@ -75,6 +75,16 @@ export class GroupsController {
     return this.groupsService.getGroupMembers(groupId);
   }
 
+  @Get(':groupId/owes')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Отримати борги учасників групи' })
+  @ApiParam({ name: 'groupId', description: 'ID групи' })
+  @ApiResponse({ status: 200, description: 'Список боргів між учасниками групи' })
+  @ApiResponse({ status: 404, description: 'Група не знайдена' })
+  async getGroupOwes(@Param('groupId') groupId: number) {
+    return this.groupsService.getGroupOwes(groupId);
+  }
+
   @Get(':groupId/requests/to')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Отримати запити на вступ до групи' })

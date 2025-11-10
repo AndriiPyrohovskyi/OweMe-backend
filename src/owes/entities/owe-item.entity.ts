@@ -17,8 +17,8 @@ export class OweItem {
     @Column({ nullable: true, length: 1000 })
     description: string
 
-    @Column({ nullable: true, length: 500 })
-    imageUrl: string
+    @Column('simple-array', { nullable: true })
+    imageUrls: string[]
 
     @CreateDateColumn()
     createdAt: Date

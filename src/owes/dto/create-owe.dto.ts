@@ -28,9 +28,9 @@ export class CreateOweItemDto {
   @IsOptional()
   description?: string;
 
-  @IsString()
+  @IsArray()
   @IsOptional()
-  imageUrl?: string;
+  imageUrls?: string[];
 
   @IsArray()
   @ValidateNested({ each: true })
